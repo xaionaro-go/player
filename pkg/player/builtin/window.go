@@ -43,6 +43,6 @@ func NewWindow(
 		&WindowRenderer{
 			window: fyne.CurrentApp().NewWindow(title),
 		},
-		audio.NewAudioAuto(ctx),
+		audio.NewPlayerAuto(ctx),
 	)
 }

@@ -21,5 +21,5 @@ type AudioRenderer interface {
 		format audio.PCMFormat,
 		bufferSize time.Duration,
 		reader io.Reader,
-	) (audio.Stream, error)
+	) (audio.PlayStream, error)
 }
