@@ -219,6 +219,7 @@ func (p *Player) processAudioFrame(
 		logger.Debugf(ctx, "codecID == %v, sampleRate == %v, channels == %v, pcmFormat == %v", codecID, sampleRate, channels, pcmFormat)
 		bufferSize := BufferSizeAudio
 		audioStream, err := p.AudioRenderer.PlayPCM(
+			ctx,
 			audio.SampleRate(sampleRate),
 			audio.Channel(channels),
 			pcmFormatToAudio(pcmFormat),

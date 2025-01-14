@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"context"
 	"image"
 	"io"
 	"time"
@@ -16,6 +17,7 @@ type ImageRenderer interface {
 
 type AudioRenderer interface {
 	PlayPCM(
+		ctx context.Context,
 		sampleRate audio.SampleRate,
 		channels audio.Channel,
 		format audio.PCMFormat,
