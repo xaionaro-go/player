@@ -12,6 +12,7 @@ import (
 
 	"github.com/facebookincubator/go-belt/tool/logger"
 	"github.com/xaionaro-go/audio/pkg/audio"
+	"github.com/xaionaro-go/audio/pkg/audio/planar"
 	"github.com/xaionaro-go/observability"
 	"github.com/xaionaro-go/recoder/libav/recoder"
 	"github.com/xaionaro-go/xsync"
@@ -221,19 +222,31 @@ func (p *Player) processAudioFrame(
 	streamIdx := frame.Packet.StreamIndex()
 
 	if p.audioStreamIndex.CompareAndSwap(math.MaxUint32, uint32(streamIdx)) { // atomics are not really needed because all of this happens while holding p.locker
-		r, w := io.Pipe()
-		p.audioWriter = w
+		var r io.Reader
+		{
+			pr, pw := io.Pipe()
+			p.audioWriter = pw
+			r = pr
+		}
+		bufSize, err := frame.SamplesBufferSize(1)
+		if err != nil {
+			return fmt.Errorf("unable to get the buffer size: %w", err)
+		}
 		sampleRate := frame.DecoderContext.SampleRate()
 		channels := frame.DecoderContext.ChannelLayout().Channels()
-		pcmFormat := frame.DecoderContext.SampleFormat()
+		pcmFormatAV := frame.DecoderContext.SampleFormat()
 		codecID := frame.DecoderContext.CodecID()
-		logger.Debugf(ctx, "codecID == %v, sampleRate == %v, channels == %v, pcmFormat == %v", codecID, sampleRate, channels, pcmFormat)
+		logger.Debugf(ctx, "codecID == %v, sampleRate == %v, channels == %v, pcmFormat == %v", codecID, sampleRate, channels, pcmFormatAV)
 		bufferSize := BufferSizeAudio
+		pcmFormat := pcmFormatToAudio(pcmFormatAV)
+		if isPlanar(pcmFormatAV) {
+			r = planar.NewUnplanarReader(r, audio.Channel(channels), uint(pcmFormat.Size()), uint(bufSize))
+		}
 		audioStream, err := p.AudioRenderer.PlayPCM(
 			ctx,
 			audio.SampleRate(sampleRate),
 			audio.Channel(channels),
-			pcmFormatToAudio(pcmFormat),
+			pcmFormat,
 			bufferSize,
 			r,
 		)
