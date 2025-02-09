@@ -24,18 +24,19 @@ const (
 type Player struct {
 	ImageRenderer
 	AudioRenderer
-	lastSeekAt           time.Time
-	audioWriter          io.WriteCloser
-	audioStream          audio.Stream
-	locker               xsync.Gorex
-	currentURL           string
-	currentImage         image.Image
-	currentDuration      time.Duration
-	currentVideoPosition time.Duration
-	currentAudioPosition time.Duration
-	videoStreamIndex     atomic.Uint32
-	audioStreamIndex     atomic.Uint32
-	endChan              chan struct{}
+	lastSeekAt            time.Time
+	audioWriter           io.WriteCloser
+	audioStream           audio.Stream
+	locker                xsync.Gorex
+	currentURL            string
+	currentImage          image.Image
+	currentDuration       time.Duration
+	previousVideoPosition time.Duration
+	currentAudioPosition  time.Duration
+	startOffset           *time.Duration
+	videoStreamIndex      atomic.Uint32
+	audioStreamIndex      atomic.Uint32
+	endChan               chan struct{}
 }
 
 func New(
@@ -127,7 +128,7 @@ func (p *Player) processFrame(
 ) error {
 	logger.Tracef(ctx, "processFrame: pos: %v; dur: %v; pts: %v; time_base: %v", frame.Position(), frame.MaxPosition(), frame.Pts(), frame.DecoderContext.TimeBase())
 	defer func() {
-		logger.Tracef(ctx, "/processFrame; av-desync: %v", p.currentAudioPosition-p.currentVideoPosition)
+		logger.Tracef(ctx, "/processFrame; av-desync: %v", p.currentAudioPosition-p.previousVideoPosition)
 	}()
 	return xsync.DoR1(ctx, &p.locker, func() error {
 		switch frame.DecoderContext.MediaType() {
@@ -161,9 +162,7 @@ func (p *Player) processVideoFrame(
 		return nil
 	}
 
-	p.currentVideoPosition = frame.Position()
 	p.currentDuration = frame.MaxPosition()
-
 	streamIdx := frame.Packet.StreamIndex()
 
 	if p.videoStreamIndex.CompareAndSwap(math.MaxUint32, uint32(streamIdx)) { // atomics are not really needed because all of this happens while holding p.locker
@@ -179,15 +178,27 @@ func (p *Player) processVideoFrame(
 
 	frame.Data().ToImage(p.currentImage)
 
+	sinceStart := time.Since(p.lastSeekAt)
+	currentExpectedPosition := p.previousVideoPosition + frame.FrameDuration()
+	if p.startOffset == nil {
+		p.startOffset = ptr(currentExpectedPosition - sinceStart)
+		logger.Tracef(ctx, "set startOffset to: %v, which is %v - %v", *p.startOffset, currentExpectedPosition, sinceStart)
+	}
+	curPosition := sinceStart + *p.startOffset
+	waitIntervalForNextFrame := currentExpectedPosition - curPosition
+	if abs(waitIntervalForNextFrame) > time.Minute {
+		p.startOffset = ptr(currentExpectedPosition - sinceStart)
+		logger.Tracef(ctx, "update startOffset to: %v, which is %v - %v", *p.startOffset, currentExpectedPosition, sinceStart)
+		waitIntervalForNextFrame = 0
+	}
+	p.previousVideoPosition = frame.Position()
+
+	logger.Tracef(ctx, "sleeping for %v (%v - (%v + %v))", waitIntervalForNextFrame, currentExpectedPosition, sinceStart, *p.startOffset)
+	time.Sleep(waitIntervalForNextFrame)
+
 	if err := p.renderCurrentPicture(); err != nil {
 		return fmt.Errorf("unable to render the picture: %w", err)
 	}
-
-	sinceStart := time.Since(p.lastSeekAt)
-	nextExpectedPosition := p.currentVideoPosition + frame.FrameDuration()
-	waitIntervalForNextFrame := nextExpectedPosition - sinceStart
-	logger.Tracef(ctx, "sleeping for %v (%v - %v)", waitIntervalForNextFrame, nextExpectedPosition, sinceStart)
-	time.Sleep(waitIntervalForNextFrame)
 
 	return nil
 }
@@ -307,7 +318,7 @@ func (p *Player) GetPosition(
 			return 0, fmt.Errorf("the player is not started or already ended")
 		}
 
-		return (p.currentVideoPosition + p.currentAudioPosition) / 2, nil
+		return (p.previousVideoPosition + p.currentAudioPosition) / 2, nil
 	})
 }
 
