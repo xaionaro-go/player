@@ -240,7 +240,7 @@ func (p *Player) processAudioFrame(
 		bufferSize := BufferSizeAudio
 		pcmFormat := pcmFormatToAudio(pcmFormatAV)
 		if isPlanar(pcmFormatAV) {
-			r = planar.NewUnplanarReader(r, audio.Channel(channels), uint(pcmFormat.Size()), uint(bufSize))
+			r = planar.NewUnplanarizeReader(r, audio.Channel(channels), uint(pcmFormat.Size()), uint(bufSize))
 		}
 		audioStream, err := p.AudioRenderer.PlayPCM(
 			ctx,

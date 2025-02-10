@@ -337,8 +337,8 @@ github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
 github.com/xaionaro-go/astiav v0.0.0-20250106205037-a1605f324663 h1:b0lOm2erjkc/D1/BBa1m9F/jV5AEhU6sRzkcqwTUZH8=
 github.com/xaionaro-go/astiav v0.0.0-20250106205037-a1605f324663/go.mod h1:K7D8UC6GeQt85FUxk2KVwYxHnotrxuEnp5evkkudc2s=
-github.com/xaionaro-go/audio v0.0.0-20250209162751-a6617003b50b h1:wDnhRHYHm3OBl1uxCJmt91EKH4dD206L7nP9LsqlqvU=
-github.com/xaionaro-go/audio v0.0.0-20250209162751-a6617003b50b/go.mod h1:R9xpD24iT2xkcq0XFFCYNZvDCDiTFAe8WGUDwRgyK9Y=
+github.com/xaionaro-go/audio v0.0.0-20250210102901-abfced9d5ef3 h1:LRIpqqC7Gsz5+/EsIWRtdPZZPMpx9yykUVFyUnRaKbE=
+github.com/xaionaro-go/audio v0.0.0-20250210102901-abfced9d5ef3/go.mod h1:i4CntPlryh9HLmA3p3M0CNr1usRkEkuh3N2Ui3HeXQA=
 github.com/xaionaro-go/datacounter v1.0.4 h1:+QMZLmu73R5WGkQfUPwlXF/JFN+Weo4iuDZkiL2wVm8=
 github.com/xaionaro-go/datacounter v1.0.4/go.mod h1:Sf9vBevuV6w5iE6K3qJ9pWVKcyS60clWBUSQLjt5++c=
 github.com/xaionaro-go/gorex v0.0.0-20241010205749-bcd59d639c4d h1:9DyH0lboWWzKUwiqGmp9sTZ3bSPhgJHiiWgV+hqY9Uo=
