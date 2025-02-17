@@ -2,7 +2,6 @@ package builtin
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"image"
 	"io"
@@ -90,27 +89,25 @@ func (p *Player) openURL(
 	pipeline.PushTo = append(pipeline.PushTo, avpipeline.NewPipelineNode(decoder))
 
 	p.onSeek(ctx)
+
+	ctx, cancelFn := context.WithCancel(ctx)
+	errCh := make(chan avpipeline.ErrPipeline, 1)
 	observability.Go(ctx, func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
-			err := pipeline.Serve(ctx)
-			if err != nil {
-				logger.Errorf(ctx, "pipeline.Serve returned error: %v", err)
-			}
-			switch {
-			case err == nil:
-				continue
-			case errors.Is(err, io.EOF):
-			default:
-				logger.Errorf(ctx, "got an error while reading the streams from '%s': %v", link, err)
-			}
-			p.onEnd()
+		defer cancelFn()
+		select {
+		case <-ctx.Done():
 			return
+		case err := <-errCh:
+			if err.Err != nil {
+				logger.Errorf(ctx, "received error: %v", err)
+			} else {
+				logger.Debugf(ctx, "received error: %v", err)
+			}
 		}
+	})
+	observability.Go(ctx, func() {
+		pipeline.Serve(ctx, errCh)
+		p.onEnd()
 	})
 
 	p.currentURL = link

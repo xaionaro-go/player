@@ -18,7 +18,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/spf13/pflag v1.0.6
 	github.com/xaionaro-go/audio v0.0.0-20250210102901-abfced9d5ef3
-	github.com/xaionaro-go/avpipeline v0.0.0-20250217020815-81e685830a8e
+	github.com/xaionaro-go/avpipeline v0.0.0-20250217031756-936d572a90d3
 	github.com/xaionaro-go/datacounter v1.0.4
 	github.com/xaionaro-go/logwriter v0.0.0-20250111154941-c3f7a1a2d567
 	github.com/xaionaro-go/observability v0.0.0-20250111142240-5d72f17a6d12
