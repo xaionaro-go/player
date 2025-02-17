@@ -13,8 +13,8 @@ import (
 	"github.com/facebookincubator/go-belt/tool/logger"
 	"github.com/xaionaro-go/audio/pkg/audio"
 	"github.com/xaionaro-go/audio/pkg/audio/planar"
+	"github.com/xaionaro-go/avpipeline"
 	"github.com/xaionaro-go/observability"
-	"github.com/xaionaro-go/recoder/libav/recoder"
 	"github.com/xaionaro-go/xsync"
 )
 
@@ -73,26 +73,22 @@ func (p *Player) openURL(
 	ctx context.Context,
 	link string,
 ) error {
-	decoderCfg := recoder.DecoderConfig{}
-	decoder, err := recoder.NewDecoder(decoderCfg)
-	logger.Tracef(ctx, "NewDecoder(%#+v): %v", decoderCfg, err)
-	if err != nil {
-		return fmt.Errorf("unable to initialize a decoder: %w", err)
-	}
-
-	inputCfg := recoder.InputConfig{}
-	input, err := recoder.NewInputFromURL(ctx, link, "", inputCfg)
+	inputCfg := avpipeline.InputConfig{}
+	input, err := avpipeline.NewInputFromURL(ctx, link, "", inputCfg)
 	logger.Tracef(ctx, "NewInputFromURL(ctx, '%s', '', %#+v): %v", link, inputCfg, err)
 	if err != nil {
 		return fmt.Errorf("unable to open '%s': %w", link, err)
 	}
 
-	fr := p.newFrameReader(ctx)
-	err = decoder.ReadFrame(ctx, input, fr)
-	logger.Tracef(ctx, "ReadFrame(ctx, input, frameReader): %v", err)
+	pipeline := avpipeline.NewPipelineNode(input)
+
+	decoder, err := avpipeline.NewFrameReader(ctx, p, p)
 	if err != nil {
-		return fmt.Errorf("unable to start reading the streams from '%s': %w", link, err)
+		input.Close()
+		return fmt.Errorf("unable to create a recoder: %w", err)
 	}
+	pipeline.PushTo = append(pipeline.PushTo, avpipeline.NewPipelineNode(decoder))
+
 	p.onSeek(ctx)
 	observability.Go(ctx, func() {
 		for {
@@ -101,7 +97,10 @@ func (p *Player) openURL(
 				return
 			default:
 			}
-			err := decoder.ReadFrame(ctx, input, fr)
+			err := pipeline.Serve(ctx)
+			if err != nil {
+				logger.Errorf(ctx, "pipeline.Serve returned error: %v", err)
+			}
 			switch {
 			case err == nil:
 				continue
@@ -125,14 +124,14 @@ func (p *Player) openURL(
 
 func (p *Player) processFrame(
 	ctx context.Context,
-	frame *recoder.Frame,
+	frame *avpipeline.Frame,
 ) error {
-	logger.Tracef(ctx, "processFrame: pos: %v; dur: %v; pts: %v; time_base: %v", frame.Position(), frame.MaxPosition(), frame.Pts(), frame.DecoderContext.TimeBase())
+	logger.Tracef(ctx, "processFrame: pos: %v; dur: %v; pts: %v; time_base: %v", frame.Position(), frame.MaxPosition(), frame.Pts(), frame.Decoder.CodecContext().TimeBase())
 	defer func() {
 		logger.Tracef(ctx, "/processFrame; av-desync: %v", p.currentAudioPosition-p.previousVideoPosition)
 	}()
 	return xsync.DoR1(ctx, &p.locker, func() error {
-		switch frame.DecoderContext.MediaType() {
+		switch frame.Decoder.CodecContext().MediaType() {
 		case MediaTypeVideo:
 			return p.processVideoFrame(ctx, frame)
 		case MediaTypeAudio:
@@ -155,7 +154,7 @@ func (p *Player) onSeek(
 
 func (p *Player) processVideoFrame(
 	ctx context.Context,
-	frame *recoder.Frame,
+	frame *avpipeline.Frame,
 ) error {
 	logger.Tracef(ctx, "processVideoFrame")
 	defer logger.Tracef(ctx, "/processVideoFrame")
@@ -210,7 +209,7 @@ func (p *Player) renderCurrentPicture() error {
 
 func (p *Player) processAudioFrame(
 	ctx context.Context,
-	frame *recoder.Frame,
+	frame *avpipeline.Frame,
 ) error {
 	logger.Tracef(ctx, "processAudioFrame")
 	defer logger.Tracef(ctx, "/processAudioFrame")
@@ -232,10 +231,11 @@ func (p *Player) processAudioFrame(
 		if err != nil {
 			return fmt.Errorf("unable to get the buffer size: %w", err)
 		}
-		sampleRate := frame.DecoderContext.SampleRate()
-		channels := frame.DecoderContext.ChannelLayout().Channels()
-		pcmFormatAV := frame.DecoderContext.SampleFormat()
-		codecID := frame.DecoderContext.CodecID()
+		decoderContext := frame.Decoder.CodecContext()
+		sampleRate := decoderContext.SampleRate()
+		channels := decoderContext.ChannelLayout().Channels()
+		pcmFormatAV := decoderContext.SampleFormat()
+		codecID := decoderContext.CodecID()
 		logger.Debugf(ctx, "codecID == %v, sampleRate == %v, channels == %v, pcmFormat == %v", codecID, sampleRate, channels, pcmFormatAV)
 		bufferSize := BufferSizeAudio
 		pcmFormat := pcmFormatToAudio(pcmFormatAV)

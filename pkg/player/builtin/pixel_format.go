@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/xaionaro-go/recoder/libav/recoder"
+	"github.com/xaionaro-go/avpipeline"
 )
 
 func (p *Player) initImageFor(
 	_ context.Context,
-	frame *recoder.Frame,
+	frame *avpipeline.Frame,
 ) error {
 	var err error
 	p.currentImage, err = frame.Data().GuessImageFormat()

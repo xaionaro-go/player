@@ -4,27 +4,27 @@ go 1.23.2
 
 toolchain go1.23.4
 
-replace github.com/asticode/go-astiav v0.30.0 => github.com/xaionaro-go/astiav v0.0.0-20250106205037-a1605f324663
+replace github.com/asticode/go-astiav v0.33.1 => github.com/xaionaro-go/astiav v0.0.0-20250106205037-a1605f324663
 
 require (
 	fyne.io/fyne/v2 v2.5.3
 	github.com/AgustinSRG/go-child-process-manager v1.0.1
 	github.com/adrg/libvlc-go/v3 v3.1.6
-	github.com/asticode/go-astiav v0.30.0
+	github.com/asticode/go-astiav v0.33.1
 	github.com/blang/mpv v0.0.0-20160810175505-d56d7352e068
 	github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933
-	github.com/facebookincubator/go-belt v0.0.0-20240804203001-846c4409d41c
+	github.com/facebookincubator/go-belt v0.0.0-20250201205440-80b5034808e3
 	github.com/goccy/go-yaml v1.15.13
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.6
 	github.com/xaionaro-go/audio v0.0.0-20250210102901-abfced9d5ef3
+	github.com/xaionaro-go/avpipeline v0.0.0-20250217020815-81e685830a8e
 	github.com/xaionaro-go/datacounter v1.0.4
 	github.com/xaionaro-go/logwriter v0.0.0-20250111154941-c3f7a1a2d567
 	github.com/xaionaro-go/observability v0.0.0-20250111142240-5d72f17a6d12
-	github.com/xaionaro-go/recoder v0.0.0-20250111153658-7e55cef13b0f
 	github.com/xaionaro-go/xfyne v0.0.0-20241018233531-26123724a6c6
 	github.com/xaionaro-go/xpath v0.0.0-20250111145115-55f5728f643f
-	github.com/xaionaro-go/xsync v0.0.0-20250111141039-3e7f31b1a2c6
+	github.com/xaionaro-go/xsync v0.0.0-20250113213958-aedf9c8786f5
 	golang.org/x/net v0.34.0
 	google.golang.org/grpc v1.69.2
 	google.golang.org/protobuf v1.36.2
@@ -34,7 +34,7 @@ require (
 	fyne.io/systray v1.11.0 // indirect
 	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/DataDog/gostackparse v0.7.0 // indirect
-	github.com/asticode/go-astikit v0.51.1 // indirect
+	github.com/asticode/go-astikit v0.52.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/ebitengine/oto/v3 v3.3.2 // indirect
 	github.com/ebitengine/purego v0.8.0 // indirect
@@ -61,6 +61,7 @@ require (
 	github.com/jfreymuth/vorbis v1.0.2 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.4.0 // indirect
 	github.com/phuslu/goid v1.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
