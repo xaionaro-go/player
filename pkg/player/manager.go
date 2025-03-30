@@ -30,8 +30,8 @@ func SupportedBackends() []Backend {
 	if SupportedMPV {
 		result = append(result, BackendMPV)
 	}
-	if SupportedBuiltin {
-		result = append(result, BackendBuiltin)
+	if SupportedBuiltinLibAV {
+		result = append(result, BackendBuiltinLibAV)
 	}
 	return result
 }
@@ -47,8 +47,8 @@ func (m *Manager) NewPlayer(
 ) (Player, error) {
 	logger.Debugf(ctx, "NewPlayer: '%s' '%s'", title, backend)
 	switch backend {
-	case BackendBuiltin:
-		return m.NewBuiltin(ctx, title)
+	case BackendBuiltinLibAV:
+		return m.NewBuiltinLibAV(ctx, title)
 	case BackendLibVLC:
 		return m.NewLibVLC(ctx, title)
 	case BackendMPV:

@@ -1,5 +1,5 @@
-//go:build android
-// +build android
+//go:build !with_libav
+// +build !with_libav
 
 package player
 
@@ -8,18 +8,18 @@ import (
 	"fmt"
 )
 
-const SupportedBuiltin = false
+const SupportedBuiltinLibAV = false
 
-func NewBuiltin(
+func NewBuiltinLibAV(
 	ctx context.Context,
 	title string,
 ) (Player, error) {
 	return nil, fmt.Errorf("not supported, yet")
 }
 
-func (m *Manager) NewBuiltin(
+func (m *Manager) NewBuiltinLibAV(
 	ctx context.Context,
 	title string,
 ) (Player, error) {
-	return NewBuiltin(ctx, title)
+	return NewBuiltinLibAV(ctx, title)
 }

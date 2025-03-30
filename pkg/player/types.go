@@ -9,8 +9,8 @@ type PlayerCommon = types.PlayerCommon
 type Backend = types.Backend
 
 const (
-	BackendUndefined = types.BackendUndefined
-	BackendLibVLC    = types.BackendLibVLC
-	BackendMPV       = types.BackendMPV
-	BackendBuiltin   = types.BackendBuiltin
+	BackendUndefined    = types.BackendUndefined
+	BackendLibVLC       = types.BackendLibVLC
+	BackendMPV          = types.BackendMPV
+	BackendBuiltinLibAV = types.BackendBuiltinLibAV
 )
