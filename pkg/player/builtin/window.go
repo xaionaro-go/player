@@ -3,25 +3,41 @@ package builtin
 import (
 	"context"
 	"image"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
 	"github.com/xaionaro-go/audio/pkg/audio"
 )
 
 type WindowRenderer struct {
-	window      fyne.Window
-	canvasImage *canvas.Image
+	window       fyne.Window
+	imageRaster  *canvas.Raster
+	currentImage image.Image
+	resizeOnce   sync.Once
 }
 
 func (r *WindowRenderer) SetImage(img image.Image) error {
-	r.canvasImage = canvas.NewImageFromImage(img)
-	r.window.SetContent(r.canvasImage)
+	r.currentImage = img
+	r.resizeOnce.Do(func() {
+		bounds := img.Bounds()
+		size := fyne.NewSize(float32(bounds.Dx()), float32(bounds.Dy()))
+		if size.Width == 0 {
+			size.Width = 1920
+		}
+		if size.Height == 0 {
+			size.Height = 1080
+		}
+		r.imageRaster.Resize(size)
+		r.imageRaster.SetMinSize(size)
+		r.window.Resize(size)
+	})
 	return nil
 }
 
 func (r *WindowRenderer) Render() error {
-	r.canvasImage.Refresh()
+	r.imageRaster.Refresh()
 	return nil
 }
 
@@ -34,15 +50,25 @@ func (r *WindowRenderer) SetVisible(visible bool) error {
 	return nil
 }
 
+func (r *WindowRenderer) GetImage(w, h int) image.Image {
+	return r.currentImage
+}
+
 func NewWindow(
 	ctx context.Context,
 	title string,
 ) *Player {
+	r := &WindowRenderer{
+		window: fyne.CurrentApp().NewWindow(title),
+	}
+	r.imageRaster = canvas.NewRaster(r.GetImage)
+	r.imageRaster.ScaleMode = canvas.ImageScaleFastest
+	r.imageRaster.Show()
+	r.window.SetContent(container.NewStack(r.imageRaster))
+	r.window.Show()
 	return New(
 		ctx,
-		&WindowRenderer{
-			window: fyne.CurrentApp().NewWindow(title),
-		},
+		r,
 		audio.NewPlayerAuto(ctx),
 	)
 }
