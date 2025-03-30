@@ -13,7 +13,12 @@ import (
 	"github.com/xaionaro-go/audio/pkg/audio"
 	"github.com/xaionaro-go/audio/pkg/audio/planar"
 	"github.com/xaionaro-go/avpipeline"
+	"github.com/xaionaro-go/avpipeline/codec"
+	"github.com/xaionaro-go/avpipeline/frame"
+	"github.com/xaionaro-go/avpipeline/kernel"
+	"github.com/xaionaro-go/avpipeline/processor"
 	"github.com/xaionaro-go/observability"
+	"github.com/xaionaro-go/secret"
 	"github.com/xaionaro-go/xsync"
 )
 
@@ -72,26 +77,35 @@ func (p *Player) openURL(
 	ctx context.Context,
 	link string,
 ) error {
-	inputCfg := avpipeline.InputConfig{}
-	input, err := avpipeline.NewInputFromURL(ctx, link, "", inputCfg)
+	inputCfg := kernel.InputConfig{}
+	input, err := kernel.NewInputFromURL(ctx, link, secret.New(""), inputCfg)
 	logger.Tracef(ctx, "NewInputFromURL(ctx, '%s', '', %#+v): %v", link, inputCfg, err)
 	if err != nil {
 		return fmt.Errorf("unable to open '%s': %w", link, err)
 	}
 
-	pipeline := avpipeline.NewPipelineNode(input)
-
-	decoder, err := avpipeline.NewFrameReader(ctx, p, p)
-	if err != nil {
-		input.Close()
-		return fmt.Errorf("unable to create a recoder: %w", err)
-	}
-	pipeline.PushTo = append(pipeline.PushTo, avpipeline.NewPipelineNode(decoder))
+	inputNode := avpipeline.NewNodeFromKernel(
+		ctx,
+		input,
+		processor.DefaultOptionsInput()...,
+	)
+	decoderNode := avpipeline.NewNodeFromKernel(
+		ctx,
+		kernel.NewDecoder(ctx, codec.NewNaiveDecoderFactory(0, "")),
+		processor.DefaultOptionsRecoder()...,
+	)
+	playerNode := avpipeline.NewNodeFromKernel(
+		ctx,
+		p,
+		processor.DefaultOptionsRecoder()...,
+	)
+	inputNode.PushPacketsTo.Add(decoderNode)
+	decoderNode.PushFramesTo.Add(playerNode)
 
 	p.onSeek(ctx)
 
 	ctx, cancelFn := context.WithCancel(ctx)
-	errCh := make(chan avpipeline.ErrPipeline, 1)
+	errCh := make(chan avpipeline.ErrNode, 1)
 	observability.Go(ctx, func() {
 		defer cancelFn()
 		select {
@@ -106,7 +120,7 @@ func (p *Player) openURL(
 		}
 	})
 	observability.Go(ctx, func() {
-		pipeline.Serve(ctx, errCh)
+		avpipeline.ServeRecursively(ctx, inputNode, avpipeline.ServeConfig{}, errCh)
 		p.onEnd()
 	})
 
@@ -121,14 +135,14 @@ func (p *Player) openURL(
 
 func (p *Player) processFrame(
 	ctx context.Context,
-	frame *avpipeline.Frame,
+	frame frame.Input,
 ) error {
-	logger.Tracef(ctx, "processFrame: pos: %v; dur: %v; pts: %v; time_base: %v", frame.Position(), frame.MaxPosition(), frame.Pts(), frame.Decoder.CodecContext().TimeBase())
+	logger.Tracef(ctx, "processFrame: pos: %v; dur: %v; pts: %v; time_base: %v", frame.GetPTSAsDuration(), frame.GetStreamDurationAsDuration(), frame.Pts(), frame.Stream.TimeBase())
 	defer func() {
 		logger.Tracef(ctx, "/processFrame; av-desync: %v", p.currentAudioPosition-p.previousVideoPosition)
 	}()
 	return xsync.DoR1(ctx, &p.locker, func() error {
-		switch frame.Decoder.CodecContext().MediaType() {
+		switch frame.Stream.CodecParameters().MediaType() {
 		case MediaTypeVideo:
 			return p.processVideoFrame(ctx, frame)
 		case MediaTypeAudio:
@@ -151,7 +165,7 @@ func (p *Player) onSeek(
 
 func (p *Player) processVideoFrame(
 	ctx context.Context,
-	frame *avpipeline.Frame,
+	frame frame.Input,
 ) error {
 	logger.Tracef(ctx, "processVideoFrame")
 	defer logger.Tracef(ctx, "/processVideoFrame")
@@ -159,8 +173,8 @@ func (p *Player) processVideoFrame(
 		return nil
 	}
 
-	p.currentDuration = frame.MaxPosition()
-	streamIdx := frame.Packet.StreamIndex()
+	p.currentDuration = frame.GetStreamDurationAsDuration()
+	streamIdx := frame.Stream.Index()
 
 	if p.videoStreamIndex.CompareAndSwap(math.MaxUint32, uint32(streamIdx)) { // atomics are not really needed because all of this happens while holding p.locker
 		if err := p.initImageFor(ctx, frame); err != nil {
@@ -176,7 +190,7 @@ func (p *Player) processVideoFrame(
 	frame.Data().ToImage(p.currentImage)
 
 	sinceStart := time.Since(p.lastSeekAt)
-	currentExpectedPosition := p.previousVideoPosition + frame.FrameDuration()
+	currentExpectedPosition := p.previousVideoPosition + frame.GetDurationAsDuration()
 	if p.startOffset == nil {
 		p.startOffset = ptr(currentExpectedPosition - sinceStart)
 		logger.Tracef(ctx, "set startOffset to: %v, which is %v - %v", *p.startOffset, currentExpectedPosition, sinceStart)
@@ -188,7 +202,7 @@ func (p *Player) processVideoFrame(
 		logger.Tracef(ctx, "update startOffset to: %v, which is %v - %v", *p.startOffset, currentExpectedPosition, sinceStart)
 		waitIntervalForNextFrame = 0
 	}
-	p.previousVideoPosition = frame.Position()
+	p.previousVideoPosition = frame.GetPTSAsDuration()
 
 	logger.Tracef(ctx, "sleeping for %v (%v - (%v + %v))", waitIntervalForNextFrame, currentExpectedPosition, sinceStart, *p.startOffset)
 	time.Sleep(waitIntervalForNextFrame)
@@ -206,7 +220,7 @@ func (p *Player) renderCurrentPicture() error {
 
 func (p *Player) processAudioFrame(
 	ctx context.Context,
-	frame *avpipeline.Frame,
+	frame frame.Input,
 ) error {
 	logger.Tracef(ctx, "processAudioFrame")
 	defer logger.Tracef(ctx, "/processAudioFrame")
@@ -214,8 +228,8 @@ func (p *Player) processAudioFrame(
 		return nil
 	}
 
-	p.currentAudioPosition = frame.Position()
-	streamIdx := frame.Packet.StreamIndex()
+	p.currentAudioPosition = frame.GetPTSAsDuration()
+	streamIdx := frame.Stream.Index()
 
 	if p.audioStreamIndex.CompareAndSwap(math.MaxUint32, uint32(streamIdx)) { // atomics are not really needed because all of this happens while holding p.locker
 		var r io.Reader
@@ -228,11 +242,11 @@ func (p *Player) processAudioFrame(
 		if err != nil {
 			return fmt.Errorf("unable to get the buffer size: %w", err)
 		}
-		decoderContext := frame.Decoder.CodecContext()
-		sampleRate := decoderContext.SampleRate()
-		channels := decoderContext.ChannelLayout().Channels()
-		pcmFormatAV := decoderContext.SampleFormat()
-		codecID := decoderContext.CodecID()
+		codecParams := frame.Stream.CodecParameters()
+		sampleRate := codecParams.SampleRate()
+		channels := codecParams.ChannelLayout().Channels()
+		pcmFormatAV := codecParams.SampleFormat()
+		codecID := codecParams.CodecID()
 		logger.Debugf(ctx, "codecID == %v, sampleRate == %v, channels == %v, pcmFormat == %v", codecID, sampleRate, channels, pcmFormatAV)
 		bufferSize := BufferSizeAudio
 		pcmFormat := pcmFormatToAudio(pcmFormatAV)
@@ -398,8 +412,4 @@ func (*Player) Stop(
 	ctx context.Context,
 ) error {
 	panic("not implemented, yet")
-}
-
-func (*Player) Close(ctx context.Context) error {
-	return fmt.Errorf("not implemented, yet")
 }

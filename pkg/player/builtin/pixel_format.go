@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/xaionaro-go/avpipeline"
+	"github.com/xaionaro-go/avpipeline/frame"
 )
 
 func (p *Player) initImageFor(
 	_ context.Context,
-	frame *avpipeline.Frame,
+	frame frame.Input,
 ) error {
 	var err error
 	p.currentImage, err = frame.Data().GuessImageFormat()

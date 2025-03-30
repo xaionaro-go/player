@@ -1,16 +1,14 @@
 module github.com/xaionaro-go/player
 
-go 1.23.2
+go 1.24.1
 
-toolchain go1.23.4
-
-replace github.com/asticode/go-astiav v0.33.1 => github.com/xaionaro-go/astiav v0.0.0-20250106205037-a1605f324663
+replace github.com/asticode/go-astiav v0.35.1 => github.com/xaionaro-go/astiav v0.0.0-20250323164157-9924a3697350
 
 require (
 	fyne.io/fyne/v2 v2.5.3
 	github.com/AgustinSRG/go-child-process-manager v1.0.1
 	github.com/adrg/libvlc-go/v3 v3.1.6
-	github.com/asticode/go-astiav v0.33.1
+	github.com/asticode/go-astiav v0.35.1
 	github.com/blang/mpv v0.0.0-20160810175505-d56d7352e068
 	github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933
 	github.com/facebookincubator/go-belt v0.0.0-20250201205440-80b5034808e3
@@ -18,10 +16,11 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/spf13/pflag v1.0.6
 	github.com/xaionaro-go/audio v0.0.0-20250210102901-abfced9d5ef3
-	github.com/xaionaro-go/avpipeline v0.0.0-20250217031756-936d572a90d3
+	github.com/xaionaro-go/avpipeline v0.0.0-20250330131938-7f12413a09e7
 	github.com/xaionaro-go/datacounter v1.0.4
 	github.com/xaionaro-go/logwriter v0.0.0-20250111154941-c3f7a1a2d567
-	github.com/xaionaro-go/observability v0.0.0-20250111142240-5d72f17a6d12
+	github.com/xaionaro-go/observability v0.0.0-20250309200059-047fad8d76e4
+	github.com/xaionaro-go/secret v0.0.0-20250111141743-ced12e1082c2
 	github.com/xaionaro-go/xfyne v0.0.0-20241018233531-26123724a6c6
 	github.com/xaionaro-go/xpath v0.0.0-20250111145115-55f5728f643f
 	github.com/xaionaro-go/xsync v0.0.0-20250113213958-aedf9c8786f5
@@ -45,10 +44,11 @@ require (
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6 // indirect
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a // indirect
+	github.com/go-ng/container v0.0.0-20220615121757-4740bf4bbc52 // indirect
 	github.com/go-ng/slices v0.0.0-20230703171042-6195d35636a2 // indirect
 	github.com/go-ng/sort v0.0.0-20220617173827-2cc7cd04f7c7 // indirect
 	github.com/go-ng/xatomic v0.0.0-20230519181013-85c0ec87e55f // indirect
-	github.com/go-ng/xsort v0.0.0-20220617174223-1d146907bccc // indirect
+	github.com/go-ng/xsort v0.0.0-20250330112557-d2ee7f01661c // indirect
 	github.com/go-text/render v0.2.0 // indirect
 	github.com/go-text/typesetting v0.2.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
@@ -70,15 +70,19 @@ require (
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c // indirect
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
+	github.com/xaionaro-go/avmediacodec v0.0.0-20250317164140-f4ce53d9a1cc // indirect
 	github.com/xaionaro-go/gorex v0.0.0-20241010205749-bcd59d639c4d // indirect
 	github.com/xaionaro-go/libsrt v0.0.0-20250105232601-e760c79b2bc3 // indirect
 	github.com/xaionaro-go/logrustash v0.0.0-20240804141650-d48034780a5f // indirect
 	github.com/xaionaro-go/object v0.0.0-20241026212449-753ce10ec94c // indirect
 	github.com/xaionaro-go/proxy v0.0.0-20250111150848-1f0e7b262638 // indirect
 	github.com/xaionaro-go/spinlock v0.0.0-20200518175509-30e6d1ce68a1 // indirect
+	github.com/xaionaro-go/typing v0.0.0-20221123235249-2229101d38ba // indirect
 	github.com/xaionaro-go/unsafetools v0.0.0-20241024014258-a46e1ce3763e // indirect
+	github.com/xaionaro-go/xcontext v0.0.0-20250111150717-e70e1f5b299c // indirect
 	github.com/yuin/goldmark v1.7.1 // indirect
-	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948 // indirect
+	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/mobile v0.0.0-20231127183840-76ac6878050a // indirect
 	golang.org/x/sys v0.29.0 // indirect
