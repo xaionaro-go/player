@@ -30,3 +30,6 @@ Or:
 ```sh
 go run -tags with_libav ./cmd/player/ --backend builtin_libav MY_MEDIA_FILE_HERE
 ```
+
+Expected result:
+![demo screenshot](./doc/player_screenshot.png "demo screenshot")
