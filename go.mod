@@ -2,7 +2,7 @@ module github.com/xaionaro-go/player
 
 go 1.24.1
 
-replace github.com/asticode/go-astiav v0.35.1 => github.com/xaionaro-go/astiav v0.0.0-20250323164157-9924a3697350
+replace github.com/asticode/go-astiav v0.35.1 => github.com/xaionaro-go/astiav v0.0.0-20250401003159-fe890da0a1a9
 
 require (
 	fyne.io/fyne/v2 v2.5.3
@@ -16,7 +16,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/spf13/pflag v1.0.6
 	github.com/xaionaro-go/audio v0.0.0-20250210102901-abfced9d5ef3
-	github.com/xaionaro-go/avpipeline v0.0.0-20250330131938-7f12413a09e7
+	github.com/xaionaro-go/avpipeline v0.0.0-20250331013640-965f27ebf9c5
 	github.com/xaionaro-go/datacounter v1.0.4
 	github.com/xaionaro-go/logwriter v0.0.0-20250111154941-c3f7a1a2d567
 	github.com/xaionaro-go/observability v0.0.0-20250309200059-047fad8d76e4

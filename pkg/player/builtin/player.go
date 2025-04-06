@@ -91,7 +91,7 @@ func (p *Player) openURL(
 	)
 	decoderNode := avpipeline.NewNodeFromKernel(
 		ctx,
-		kernel.NewDecoder(ctx, codec.NewNaiveDecoderFactory(0, "")),
+		kernel.NewDecoder(ctx, codec.NewNaiveDecoderFactory(ctx, 0, "", nil)),
 		processor.DefaultOptionsRecoder()...,
 	)
 	playerNode := avpipeline.NewNodeFromKernel(
@@ -137,12 +137,12 @@ func (p *Player) processFrame(
 	ctx context.Context,
 	frame frame.Input,
 ) error {
-	logger.Tracef(ctx, "processFrame: pos: %v; dur: %v; pts: %v; time_base: %v", frame.GetPTSAsDuration(), frame.GetStreamDurationAsDuration(), frame.Pts(), frame.Stream.TimeBase())
+	logger.Tracef(ctx, "processFrame: pos: %v; dur: %v; pts: %v; time_base: %v", frame.GetPTSAsDuration(), frame.GetStreamDurationAsDuration(), frame.Pts(), frame.GetTimeBase())
 	defer func() {
 		logger.Tracef(ctx, "/processFrame; av-desync: %v", p.currentAudioPosition-p.previousVideoPosition)
 	}()
 	return xsync.DoR1(ctx, &p.locker, func() error {
-		switch frame.Stream.CodecParameters().MediaType() {
+		switch frame.GetMediaType() {
 		case MediaTypeVideo:
 			return p.processVideoFrame(ctx, frame)
 		case MediaTypeAudio:
@@ -174,7 +174,7 @@ func (p *Player) processVideoFrame(
 	}
 
 	p.currentDuration = frame.GetStreamDurationAsDuration()
-	streamIdx := frame.Stream.Index()
+	streamIdx := frame.GetStreamIndex()
 
 	if p.videoStreamIndex.CompareAndSwap(math.MaxUint32, uint32(streamIdx)) { // atomics are not really needed because all of this happens while holding p.locker
 		if err := p.initImageFor(ctx, frame); err != nil {
@@ -229,7 +229,7 @@ func (p *Player) processAudioFrame(
 	}
 
 	p.currentAudioPosition = frame.GetPTSAsDuration()
-	streamIdx := frame.Stream.Index()
+	streamIdx := frame.GetStreamIndex()
 
 	if p.audioStreamIndex.CompareAndSwap(math.MaxUint32, uint32(streamIdx)) { // atomics are not really needed because all of this happens while holding p.locker
 		var r io.Reader
@@ -242,11 +242,12 @@ func (p *Player) processAudioFrame(
 		if err != nil {
 			return fmt.Errorf("unable to get the buffer size: %w", err)
 		}
-		codecParams := frame.Stream.CodecParameters()
-		sampleRate := codecParams.SampleRate()
-		channels := codecParams.ChannelLayout().Channels()
-		pcmFormatAV := codecParams.SampleFormat()
-		codecID := codecParams.CodecID()
+
+		codecCtx := frame.CodecContext
+		sampleRate := codecCtx.SampleRate()
+		channels := codecCtx.ChannelLayout().Channels()
+		pcmFormatAV := codecCtx.SampleFormat()
+		codecID := codecCtx.CodecID()
 		logger.Debugf(ctx, "codecID == %v, sampleRate == %v, channels == %v, pcmFormat == %v", codecID, sampleRate, channels, pcmFormatAV)
 		bufferSize := BufferSizeAudio
 		pcmFormat := pcmFormatToAudio(pcmFormatAV)
