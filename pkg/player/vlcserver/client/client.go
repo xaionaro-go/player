@@ -279,6 +279,149 @@ func (c *Client) SetPause(
 	return nil
 }
 
+func (c *Client) Seek(
+	ctx context.Context,
+	pos time.Duration,
+	isRelative bool,
+	quick bool,
+) error {
+	client, conn, err := c.grpcClient()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	_, err = client.Seek(ctx, &player_grpc.SeekRequest{
+		Pos:        pos.Nanoseconds(),
+		IsRelative: isRelative,
+		IsQuick:    quick,
+	})
+	if err != nil {
+		return fmt.Errorf("query error: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) GetVideoTracks(
+	ctx context.Context,
+) (types.VideoTracks, error) {
+	client, conn, err := c.grpcClient()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	resp, err := client.GetVideoTracks(ctx, &player_grpc.GetVideoTracksRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+
+	var result types.VideoTracks
+	for _, track := range resp.GetVideoTrack() {
+		result = append(result, types.VideoTrack{ID: track.GetId()})
+	}
+	return result, nil
+}
+
+func (c *Client) GetAudioTracks(
+	ctx context.Context,
+) (types.AudioTracks, error) {
+	client, conn, err := c.grpcClient()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	resp, err := client.GetAudioTracks(ctx, &player_grpc.GetAudioTracksRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+
+	var result types.AudioTracks
+	for _, track := range resp.GetAudioTrack() {
+		result = append(result, types.AudioTrack{ID: track.GetId()})
+	}
+	return result, nil
+}
+
+func (c *Client) GetSubtitlesTracks(
+	ctx context.Context,
+) (types.SubtitlesTracks, error) {
+	client, conn, err := c.grpcClient()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	resp, err := client.GetSubtitlesTracks(ctx, &player_grpc.GetSubtitlesTracksRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+
+	var result types.SubtitlesTracks
+	for _, track := range resp.GetSubtitlesTrack() {
+		result = append(result, types.SubtitlesTrack{ID: track.GetId()})
+	}
+	return result, nil
+}
+
+func (c *Client) SetVideoTrack(
+	ctx context.Context,
+	vid int64,
+) error {
+	client, conn, err := c.grpcClient()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	_, err = client.SetVideoTrack(ctx, &player_grpc.SetVideoTrackRequest{
+		VideoTrackID: vid,
+	})
+	if err != nil {
+		return fmt.Errorf("query error: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) SetAudioTrack(
+	ctx context.Context,
+	aid int64,
+) error {
+	client, conn, err := c.grpcClient()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	_, err = client.SetAudioTrack(ctx, &player_grpc.SetAudioTrackRequest{
+		AudioTrackID: aid,
+	})
+	if err != nil {
+		return fmt.Errorf("query error: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) SetSubtitlesTrack(
+	ctx context.Context,
+	sid int64,
+) error {
+	client, conn, err := c.grpcClient()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	_, err = client.SetSubtitlesTrack(ctx, &player_grpc.SetSubtitlesTrackRequest{
+		SubtitlesTrackID: sid,
+	})
+	if err != nil {
+		return fmt.Errorf("query error: %w", err)
+	}
+	return nil
+}
+
 func (c *Client) Stop(
 	ctx context.Context,
 ) error {
@@ -294,6 +437,7 @@ func (c *Client) Stop(
 	}
 	return nil
 }
+
 func (c *Client) Close(ctx context.Context) error {
 	client, conn, err := c.grpcClient()
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 )
 
 type Manager struct {
-	Config types.Config
+	CommonOptions []types.Option
 
 	PlayersLocker xsync.Mutex
 	Players       []Player
@@ -18,7 +18,7 @@ type Manager struct {
 
 func NewManager(opts ...types.Option) *Manager {
 	return &Manager{
-		Config: types.Options(opts).Config(),
+		CommonOptions: opts,
 	}
 }
 
@@ -44,16 +44,24 @@ func (m *Manager) NewPlayer(
 	ctx context.Context,
 	title string,
 	backend Backend,
+	opts ...types.Option,
 ) (Player, error) {
 	logger.Debugf(ctx, "NewPlayer: '%s' '%s'", title, backend)
 	switch backend {
 	case BackendBuiltinLibAV:
-		return m.NewBuiltinLibAV(ctx, title)
+		return m.NewBuiltinLibAV(ctx, title, m.opts(opts)...)
 	case BackendLibVLC:
-		return m.NewLibVLC(ctx, title)
+		return m.NewLibVLC(ctx, title, m.opts(opts)...)
 	case BackendMPV:
-		return m.NewMPV(ctx, title)
+		return m.NewMPV(ctx, title, m.opts(opts)...)
 	default:
 		return nil, fmt.Errorf("unexpected backend type: '%s'", backend)
 	}
+}
+
+func (m *Manager) opts(opts []types.Option) []types.Option {
+	result := make([]types.Option, 0, len(m.CommonOptions)+len(opts))
+	result = append(result, m.CommonOptions...)
+	result = append(result, opts...)
+	return result
 }

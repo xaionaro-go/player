@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/facebookincubator/go-belt"
 	"github.com/facebookincubator/go-belt/tool/logger"
@@ -249,6 +250,124 @@ func (srv *GRPCServer) SetPause(
 		return nil, fmt.Errorf("unable to set paused state to '%v': %w", req.GetIsPaused(), err)
 	}
 	return &player_grpc.SetPauseReply{}, nil
+}
+
+func (srv *GRPCServer) Seek(
+	ctx context.Context,
+	req *player_grpc.SeekRequest,
+) (*player_grpc.SeekReply, error) {
+	if err := srv.isInited(); err != nil {
+		return nil, err
+	}
+	pos := time.Nanosecond * time.Duration(req.GetPos())
+	isRel := req.GetIsRelative()
+	isQuick := req.GetIsQuick()
+	if err := srv.VLC.Seek(ctx, pos, isRel, isQuick); err != nil {
+		return nil, fmt.Errorf("unable to seek to %v (rel:%t, quick:%t): %w", pos, isRel, isQuick, err)
+	}
+	return &player_grpc.SeekReply{}, nil
+}
+
+func (srv *GRPCServer) GetVideoTracks(
+	ctx context.Context,
+	req *player_grpc.GetVideoTracksRequest,
+) (*player_grpc.GetVideoTracksReply, error) {
+	if err := srv.isInited(); err != nil {
+		return nil, err
+	}
+	result, err := srv.VLC.GetVideoTracks(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get video tracks to '%v': %w", err)
+	}
+	resp := &player_grpc.GetVideoTracksReply{}
+	for _, track := range result {
+		resp.VideoTrack = append(resp.VideoTrack, &player_grpc.VideoTrack{
+			Id:       track.ID,
+			IsActive: track.IsActive,
+		})
+	}
+	return resp, nil
+}
+
+func (srv *GRPCServer) GetAudioTracks(
+	ctx context.Context,
+	req *player_grpc.GetAudioTracksRequest,
+) (*player_grpc.GetAudioTracksReply, error) {
+	if err := srv.isInited(); err != nil {
+		return nil, err
+	}
+	result, err := srv.VLC.GetAudioTracks(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get audio tracks to '%v': %w", err)
+	}
+	resp := &player_grpc.GetAudioTracksReply{}
+	for _, track := range result {
+		resp.AudioTrack = append(resp.AudioTrack, &player_grpc.AudioTrack{
+			Id:       track.ID,
+			IsActive: track.IsActive,
+		})
+	}
+	return resp, nil
+}
+
+func (srv *GRPCServer) GetSubtitlesTracks(
+	ctx context.Context,
+	req *player_grpc.GetSubtitlesTracksRequest,
+) (*player_grpc.GetSubtitlesTracksReply, error) {
+	if err := srv.isInited(); err != nil {
+		return nil, err
+	}
+	result, err := srv.VLC.GetSubtitlesTracks(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get subtitles tracks to '%v': %w", err)
+	}
+	resp := &player_grpc.GetSubtitlesTracksReply{}
+	for _, track := range result {
+		resp.SubtitlesTrack = append(resp.SubtitlesTrack, &player_grpc.SubtitlesTrack{
+			Id:       track.ID,
+			IsActive: track.IsActive,
+		})
+	}
+	return resp, nil
+}
+
+func (srv *GRPCServer) SetVideoTrack(
+	ctx context.Context,
+	req *player_grpc.SetVideoTrackRequest,
+) (*player_grpc.SetVideoTrackReply, error) {
+	if err := srv.isInited(); err != nil {
+		return nil, err
+	}
+	if err := srv.VLC.SetVideoTrack(ctx, req.GetVideoTrackID()); err != nil {
+		return nil, fmt.Errorf("unable to set video track ID to '%v': %w", req.GetVideoTrackID(), err)
+	}
+	return &player_grpc.SetVideoTrackReply{}, nil
+}
+
+func (srv *GRPCServer) SetAudioTrack(
+	ctx context.Context,
+	req *player_grpc.SetAudioTrackRequest,
+) (*player_grpc.SetAudioTrackReply, error) {
+	if err := srv.isInited(); err != nil {
+		return nil, err
+	}
+	if err := srv.VLC.SetAudioTrack(ctx, req.GetAudioTrackID()); err != nil {
+		return nil, fmt.Errorf("unable to set audio track ID to '%v': %w", req.GetAudioTrackID(), err)
+	}
+	return &player_grpc.SetAudioTrackReply{}, nil
+}
+
+func (srv *GRPCServer) SetSubtitlesTrack(
+	ctx context.Context,
+	req *player_grpc.SetSubtitlesTrackRequest,
+) (*player_grpc.SetSubtitlesTrackReply, error) {
+	if err := srv.isInited(); err != nil {
+		return nil, err
+	}
+	if err := srv.VLC.SetSubtitlesTrack(ctx, req.GetSubtitlesTrackID()); err != nil {
+		return nil, fmt.Errorf("unable to set subtitles track ID to '%v': %w", req.GetSubtitlesTrackID(), err)
+	}
+	return &player_grpc.SetSubtitlesTrackReply{}, nil
 }
 
 func (srv *GRPCServer) Stop(

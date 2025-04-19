@@ -15,6 +15,7 @@ import (
 	child_process_manager "github.com/AgustinSRG/go-child-process-manager"
 	"github.com/facebookincubator/go-belt/tool/experimental/errmon"
 	"github.com/facebookincubator/go-belt/tool/logger"
+	"github.com/xaionaro-go/player/pkg/player/types"
 	"github.com/xaionaro-go/player/pkg/player/vlcserver/client"
 	"github.com/xaionaro-go/xpath"
 )
@@ -142,6 +143,54 @@ func (vlc *VLC) SetPause(
 	pause bool,
 ) error {
 	return vlc.Client.SetPause(ctx, pause)
+}
+
+func (vlc *VLC) Seek(
+	ctx context.Context,
+	pos time.Duration,
+	isRelative bool,
+	quick bool,
+) error {
+	return vlc.Client.Seek(ctx, pos, isRelative, quick)
+}
+
+func (vlc *VLC) GetVideoTracks(
+	ctx context.Context,
+) (types.VideoTracks, error) {
+	return vlc.Client.GetVideoTracks(ctx)
+}
+
+func (vlc *VLC) GetAudioTracks(
+	ctx context.Context,
+) (types.AudioTracks, error) {
+	return vlc.Client.GetAudioTracks(ctx)
+}
+
+func (vlc *VLC) GetSubtitlesTracks(
+	ctx context.Context,
+) (types.SubtitlesTracks, error) {
+	return vlc.Client.GetSubtitlesTracks(ctx)
+}
+
+func (vlc *VLC) SetVideoTrack(
+	ctx context.Context,
+	vid int64,
+) error {
+	return vlc.Client.SetVideoTrack(ctx, vid)
+}
+
+func (vlc *VLC) SetAudioTrack(
+	ctx context.Context,
+	aid int64,
+) error {
+	return vlc.Client.SetAudioTrack(ctx, aid)
+}
+
+func (vlc *VLC) SetSubtitlesTrack(
+	ctx context.Context,
+	sid int64,
+) error {
+	return vlc.Client.SetSubtitlesTrack(ctx, sid)
 }
 
 func (vlc *VLC) Stop(

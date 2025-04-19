@@ -12,6 +12,7 @@ import (
 	vlc "github.com/adrg/libvlc-go/v3"
 	"github.com/facebookincubator/go-belt/tool/logger"
 	"github.com/hashicorp/go-multierror"
+	"github.com/xaionaro-go/player/pkg/player/types"
 	"github.com/xaionaro-go/xsync"
 	"golang.org/x/net/context"
 )
@@ -177,6 +178,105 @@ func (p *VLC) GetPause() (bool, error) {
 
 func (p *VLC) SetPause(pause bool) error {
 	return p.Player.SetPause(pause)
+}
+
+func (p *VLC) Seek(
+	ctx context.Context,
+	pos time.Duration,
+	isRelative bool,
+	quick bool,
+) error {
+	return fmt.Errorf("not implemented, yet")
+}
+
+func (p *VLC) GetVideoTracks(
+	ctx context.Context,
+) (types.VideoTracks, error) {
+	activeTrackID, err := p.Player.VideoTrackID()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the active track ID: %w", err)
+	}
+
+	trackDescrs, err := p.Player.VideoTrackDescriptors()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get video track descriptors: %w", err)
+	}
+
+	result := make(types.VideoTracks, 0, len(trackDescrs))
+	for _, track := range trackDescrs {
+		result = append(result, types.VideoTrack{
+			ID:       int64(track.ID),
+			IsActive: track.ID == activeTrackID,
+		})
+	}
+	return result, nil
+}
+
+func (p *VLC) GetAudioTracks(
+	ctx context.Context,
+) (types.AudioTracks, error) {
+	activeTrackID, err := p.Player.AudioTrackID()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the active track ID: %w", err)
+	}
+
+	trackDescrs, err := p.Player.AudioTrackDescriptors()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get video track descriptors: %w", err)
+	}
+
+	result := make(types.AudioTracks, 0, len(trackDescrs))
+	for _, track := range trackDescrs {
+		result = append(result, types.AudioTrack{
+			ID:       int64(track.ID),
+			IsActive: track.ID == activeTrackID,
+		})
+	}
+	return result, nil
+}
+
+func (p *VLC) GetSubtitlesTracks(
+	ctx context.Context,
+) (types.SubtitlesTracks, error) {
+	activeTrackID, err := p.Player.SubtitleTrackID()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the active track ID: %w", err)
+	}
+
+	trackDescrs, err := p.Player.SubtitleTrackDescriptors()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get video track descriptors: %w", err)
+	}
+
+	result := make(types.SubtitlesTracks, 0, len(trackDescrs))
+	for _, track := range trackDescrs {
+		result = append(result, types.SubtitlesTrack{
+			ID:       int64(track.ID),
+			IsActive: track.ID == activeTrackID,
+		})
+	}
+	return result, nil
+}
+
+func (p *VLC) SetVideoTrack(
+	ctx context.Context,
+	vid int64,
+) error {
+	return p.Player.SetVideoTrack(int(vid))
+}
+
+func (p *VLC) SetAudioTrack(
+	ctx context.Context,
+	aid int64,
+) error {
+	return p.Player.SetAudioTrack(int(aid))
+}
+
+func (p *VLC) SetSubtitlesTrack(
+	ctx context.Context,
+	sid int64,
+) error {
+	return p.Player.SetSubtitleTrack(int(sid))
 }
 
 func (p *VLC) Stop() error {

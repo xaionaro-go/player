@@ -7,17 +7,27 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/xaionaro-go/player/pkg/player/types"
 )
 
 const SupportedLibVLC = false
 
 type LibVLC struct{}
 
-func NewLibVLC(ctx context.Context, title string) (*LibVLC, error) {
+func NewLibVLC(
+	ctx context.Context,
+	title string,
+	opts ...types.Option,
+) (*LibVLC, error) {
 	return nil, fmt.Errorf("compiled without LibVLC")
 }
 
-func (*Manager) NewLibVLC(ctx context.Context, title string) (*LibVLC, error) {
+func (*Manager) NewLibVLC(
+	ctx context.Context,
+	title string,
+	opts ...types.Option,
+) (*LibVLC, error) {
 	return NewLibVLC(ctx, title)
 }
 
@@ -92,6 +102,54 @@ func (*LibVLC) GetPause(
 func (*LibVLC) SetPause(
 	ctx context.Context,
 	pause bool,
+) error {
+	panic("compiled without LibVLC support")
+}
+
+func (*LibVLC) Seek(
+	ctx context.Context,
+	pos time.Duration,
+	isRelative bool,
+	quick bool,
+) error {
+	return fmt.Errorf("not implemented, yet")
+}
+
+func (*LibVLC) GetVideoTracks(
+	ctx context.Context,
+) (types.VideoTracks, error) {
+	panic("compiled without LibVLC support")
+}
+
+func (*LibVLC) GetAudioTracks(
+	ctx context.Context,
+) (types.AudioTracks, error) {
+	panic("compiled without LibVLC support")
+}
+
+func (*LibVLC) GetSubtitlesTracks(
+	ctx context.Context,
+) (types.SubtitlesTracks, error) {
+	panic("compiled without LibVLC support")
+}
+
+func (*LibVLC) SetVideoTrack(
+	ctx context.Context,
+	vid int64,
+) error {
+	panic("compiled without LibVLC support")
+}
+
+func (*LibVLC) SetAudioTrack(
+	ctx context.Context,
+	aid int64,
+) error {
+	panic("compiled without LibVLC support")
+}
+
+func (*LibVLC) SetSubtitlesTrack(
+	ctx context.Context,
+	sid int64,
 ) error {
 	panic("compiled without LibVLC support")
 }

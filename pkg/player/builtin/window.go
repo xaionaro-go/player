@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"github.com/xaionaro-go/audio/pkg/audio"
+	"github.com/xaionaro-go/player/pkg/player/types"
 )
 
 type WindowRenderer struct {
@@ -57,6 +58,7 @@ func (r *WindowRenderer) GetImage(w, h int) image.Image {
 func NewWindow(
 	ctx context.Context,
 	title string,
+	opts ...types.Option,
 ) *Player {
 	r := &WindowRenderer{
 		window: fyne.CurrentApp().NewWindow(title),

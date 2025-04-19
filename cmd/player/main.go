@@ -51,6 +51,9 @@ func main() {
 	mpvPath := pflag.String("mpv", "mpv", "path to mpv")
 	backend := pflag.String("backend", backends[0], "player backend, supported values: "+strings.Join(backends, ", "))
 	netPprofAddr := pflag.String("net-pprof-listen-addr", "", "an address to listen for incoming net/pprof connections")
+	lowLatency := pflag.Bool("low-latency", false, "")
+	cacheLength := pflag.Duration("cache-duration", 0, "")
+	cacheMaxSize := pflag.Uint("cache-max-size", 0, "")
 	pflag.Parse()
 
 	l := logrus.Default().WithLevel(loggerLevel)
@@ -76,7 +79,18 @@ func main() {
 	defer child_process_manager.DisposeChildProcessManager()
 	app := fyneapp.New()
 
-	m := player.NewManager(types.OptionPathToMPV(*mpvPath))
+	opts := types.Options{types.OptionPathToMPV(*mpvPath)}
+	if *lowLatency {
+		opts = append(opts, types.OptionLowLatency(true))
+	}
+	if *cacheLength > 0 {
+		opts = append(opts, types.OptionCacheDuration(*cacheLength))
+	}
+	if *cacheMaxSize > 0 {
+		opts = append(opts, types.OptionCacheMaxSize(*cacheMaxSize))
+	}
+
+	m := player.NewManager(opts...)
 	p, err := m.NewPlayer(ctx, "player demonstration", player.Backend(*backend))
 	assertNoError(ctx, err)
 
@@ -86,19 +100,17 @@ func main() {
 	}
 
 	observability.Go(ctx, func() {
-		for {
-			ch, err := p.EndChan(ctx)
-			if err != nil {
-				panic(err)
-			}
-			<-ch
-			w := app.NewWindow("file ended")
-			b := widget.NewButton("Close", func() {
-				w.Close()
-			})
-			w.SetContent(container.NewStack(b))
-			w.Show()
+		ch, err := p.EndChan(ctx)
+		if err != nil {
+			panic(err)
 		}
+		<-ch
+		w := app.NewWindow("file ended")
+		b := widget.NewButton("Close", func() {
+			w.Close()
+		})
+		w.SetContent(container.NewStack(b))
+		w.Show()
 	})
 
 	errorMessage := widget.NewLabel("")
@@ -118,6 +130,64 @@ func main() {
 			return
 		}
 		errorMessage.SetText("")
+	}
+
+	videoTrack := xfyne.NewNumericalEntry()
+	videoTrack.SetText("1")
+	videoTrack.OnSubmitted = func(s string) {
+		id, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			errorMessage.SetText(fmt.Sprintf("unable to parse video track ID '%s': %s", s, err))
+			return
+		}
+
+		if tracks, err := p.GetVideoTracks(ctx); err == nil {
+			logger.Debugf(ctx, "video tracks: %v", tracks)
+			found := false
+			for _, track := range tracks {
+				if track.ID == id {
+					found = true
+					break
+				}
+			}
+			if !found {
+				errorMessage.SetText(fmt.Sprintf("there is no video track ID %d", id))
+				return
+			}
+		} else {
+			logger.Errorf(ctx, "unable to get the list of video tracks: %v", err)
+		}
+
+		p.SetVideoTrack(ctx, id)
+	}
+
+	audioTrack := xfyne.NewNumericalEntry()
+	audioTrack.SetText("1")
+	audioTrack.OnSubmitted = func(s string) {
+		id, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			errorMessage.SetText(fmt.Sprintf("unable to parse audio track ID '%s': %s", s, err))
+			return
+		}
+
+		if tracks, err := p.GetAudioTracks(ctx); err == nil {
+			logger.Debugf(ctx, "audio tracks: %v", tracks)
+			found := false
+			for _, track := range tracks {
+				if track.ID == id {
+					found = true
+					break
+				}
+			}
+			if !found {
+				errorMessage.SetText(fmt.Sprintf("there is no audio track ID %d", id))
+				return
+			}
+		} else {
+			logger.Errorf(ctx, "unable to get the list of audio tracks: %v", err)
+		}
+
+		p.SetAudioTrack(ctx, id)
 	}
 
 	isPaused := false
@@ -149,6 +219,22 @@ func main() {
 		p.Stop(ctx)
 	})
 
+	forwardButton := widget.NewButtonWithIcon("", theme.MediaFastForwardIcon(), func() {
+		p.Seek(ctx, time.Second, true, false)
+	})
+
+	backwardButton := widget.NewButtonWithIcon("", theme.MediaFastRewindIcon(), func() {
+		p.Seek(ctx, -time.Second, true, false)
+	})
+
+	forwardQuickButton := widget.NewButtonWithIcon("Q", theme.MediaFastForwardIcon(), func() {
+		p.Seek(ctx, time.Second, true, true)
+	})
+
+	backwardQuickButton := widget.NewButtonWithIcon("Q", theme.MediaFastRewindIcon(), func() {
+		p.Seek(ctx, -time.Second, true, true)
+	})
+
 	posLabel := widget.NewLabel("")
 	observability.Go(ctx, func() {
 		t := time.NewTicker(time.Millisecond * 100)
@@ -156,14 +242,12 @@ func main() {
 			<-t.C
 			l, err := p.GetLength(ctx)
 			if err != nil {
-				posLabel.SetText(fmt.Sprintf("unable to get the length: %v", err))
-				return
+				l = -1
 			}
 
 			pos, err := p.GetPosition(ctx)
 			if err != nil {
 				posLabel.SetText(fmt.Sprintf("unable to get the position: %v", err))
-				return
 			}
 
 			posLabel.SetText(pos.String() + " / " + l.String())
@@ -178,9 +262,21 @@ func main() {
 		nil,
 		container.NewVBox(
 			setSpeed,
-			pauseUnpause,
-			stopButton,
-			closeButton,
+			container.NewHBox(
+				videoTrack,
+				audioTrack,
+			),
+			container.NewHBox(
+				backwardButton,
+				forwardButton,
+				backwardQuickButton,
+				forwardQuickButton,
+			),
+			container.NewHBox(
+				pauseUnpause,
+				stopButton,
+				closeButton,
+			),
 		),
 	))
 	w.Show()

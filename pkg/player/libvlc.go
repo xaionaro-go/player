@@ -6,6 +6,7 @@ package player
 import (
 	"context"
 
+	"github.com/xaionaro-go/player/pkg/player/types"
 	"github.com/xaionaro-go/player/pkg/player/vlcserver"
 )
 
@@ -14,6 +15,7 @@ const SupportedLibVLC = true
 func (m *Manager) NewLibVLC(
 	ctx context.Context,
 	title string,
+	opts ...types.Option,
 ) (*LibVLC, error) {
 	r, err := NewLibVLC(ctx, title)
 	if err != nil {

@@ -18,6 +18,7 @@ import (
 	"github.com/xaionaro-go/avpipeline/kernel"
 	"github.com/xaionaro-go/avpipeline/processor"
 	"github.com/xaionaro-go/observability"
+	"github.com/xaionaro-go/player/pkg/player/types"
 	"github.com/xaionaro-go/secret"
 	"github.com/xaionaro-go/xsync"
 )
@@ -91,7 +92,7 @@ func (p *Player) openURL(
 	)
 	decoderNode := avpipeline.NewNodeFromKernel(
 		ctx,
-		kernel.NewDecoder(ctx, codec.NewNaiveDecoderFactory(ctx, 0, "", nil)),
+		kernel.NewDecoder(ctx, codec.NewNaiveDecoderFactory(ctx, 0, "", nil, nil)),
 		processor.DefaultOptionsRecoder()...,
 	)
 	playerNode := avpipeline.NewNodeFromKernel(
@@ -120,7 +121,7 @@ func (p *Player) openURL(
 		}
 	})
 	observability.Go(ctx, func() {
-		avpipeline.ServeRecursively(ctx, inputNode, avpipeline.ServeConfig{}, errCh)
+		avpipeline.ServeRecursively(ctx, avpipeline.ServeConfig{}, errCh, inputNode)
 		p.onEnd()
 	})
 
@@ -407,6 +408,54 @@ func (*Player) SetPause(
 ) error {
 	logger.Errorf(ctx, "SetPause is not implemented, yet")
 	return nil
+}
+
+func (*Player) Seek(
+	ctx context.Context,
+	pos time.Duration,
+	isRelative bool,
+	quick bool,
+) error {
+	return fmt.Errorf("not implemented, yet")
+}
+
+func (*Player) GetVideoTracks(
+	ctx context.Context,
+) (types.VideoTracks, error) {
+	return nil, fmt.Errorf("not implemented, yet")
+}
+
+func (*Player) GetAudioTracks(
+	ctx context.Context,
+) (types.AudioTracks, error) {
+	return nil, fmt.Errorf("not implemented, yet")
+}
+
+func (*Player) GetSubtitlesTracks(
+	ctx context.Context,
+) (types.SubtitlesTracks, error) {
+	return nil, fmt.Errorf("not implemented, yet")
+}
+
+func (*Player) SetVideoTrack(
+	ctx context.Context,
+	vid int64,
+) error {
+	return fmt.Errorf("not implemented, yet")
+}
+
+func (*Player) SetAudioTrack(
+	ctx context.Context,
+	aid int64,
+) error {
+	return fmt.Errorf("not implemented, yet")
+}
+
+func (*Player) SetSubtitlesTrack(
+	ctx context.Context,
+	sid int64,
+) error {
+	return fmt.Errorf("not implemented, yet")
 }
 
 func (*Player) Stop(

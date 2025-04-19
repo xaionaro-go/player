@@ -1,6 +1,6 @@
 syntax = "proto3";
 package player;
-option go_package = "github.com/xaionaro-go/streamctl/pkg/player/protobuf/go/player_grpc";
+option go_package = "github.com/xaionaro-go/player/pkg/player/protobuf/go/player_grpc";
 
 service Player {
 	rpc Open(OpenRequest) returns (OpenReply) {}
@@ -15,6 +15,13 @@ service Player {
 	rpc SetSpeed(SetSpeedRequest) returns (SetSpeedReply) {}
 	rpc GetPause(GetPauseRequest) returns (GetPauseReply) {}
 	rpc SetPause(SetPauseRequest) returns (SetPauseReply) {}
+	rpc Seek(SeekRequest) returns (SeekReply) {}
+	rpc GetVideoTracks(GetVideoTracksRequest) returns (GetVideoTracksReply) {}
+	rpc GetAudioTracks(GetAudioTracksRequest) returns (GetAudioTracksReply) {}
+	rpc GetSubtitlesTracks(GetSubtitlesTracksRequest) returns (GetSubtitlesTracksReply) {}
+	rpc SetVideoTrack(SetVideoTrackRequest) returns (SetVideoTrackReply) {}
+	rpc SetAudioTrack(SetAudioTrackRequest) returns (SetAudioTrackReply) {}
+	rpc SetSubtitlesTrack(SetSubtitlesTrackRequest) returns (SetSubtitlesTrackReply) {}
 	rpc Stop(StopRequest) returns (StopReply) {}
 	rpc Close(CloseRequest) returns (CloseReply) {}
 }
@@ -77,6 +84,48 @@ message SetPauseRequest {
     bool isPaused = 1;
 }
 message SetPauseReply {}
+message SetVideoTrackRequest {
+    int64 videoTrackID = 1;
+}
+message SetVideoTrackReply {}
+message SetAudioTrackRequest {
+    int64 audioTrackID = 1;
+}
+message SetAudioTrackReply {}
+message SetSubtitlesTrackRequest {
+    int64 subtitlesTrackID = 1;
+}
+message SetSubtitlesTrackReply {}
+message VideoTrack {
+	int64 id = 1;
+	bool isActive = 2;
+}
+message SeekRequest {
+	int64 pos = 1;
+	bool isRelative = 2;
+	bool isQuick = 3;
+}
+message SeekReply {}
+message GetVideoTracksRequest {}
+message GetVideoTracksReply {
+	repeated VideoTrack videoTrack = 1;
+}
+message AudioTrack {
+	int64 id = 1;
+	bool isActive = 2;
+}
+message GetAudioTracksRequest {}
+message GetAudioTracksReply {
+	repeated AudioTrack audioTrack = 1;
+}
+message SubtitlesTrack {
+	int64 id = 1;
+	bool isActive = 2;
+}
+message GetSubtitlesTracksRequest {}
+message GetSubtitlesTracksReply {
+	repeated SubtitlesTrack subtitlesTrack = 1;
+}
 message StopRequest {}
 message StopReply {}
 message CloseRequest {}

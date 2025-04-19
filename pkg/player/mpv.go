@@ -14,11 +14,13 @@ import (
 
 	child_process_manager "github.com/AgustinSRG/go-child-process-manager"
 	"github.com/blang/mpv"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/dexterlb/mpvipc"
 	"github.com/facebookincubator/go-belt/tool/experimental/errmon"
 	"github.com/facebookincubator/go-belt/tool/logger"
 	"github.com/xaionaro-go/logwriter"
 	"github.com/xaionaro-go/observability"
+	"github.com/xaionaro-go/player/pkg/player/types"
 	"github.com/xaionaro-go/xpath"
 	"github.com/xaionaro-go/xsync"
 )
@@ -54,8 +56,10 @@ var _ Player = (*MPV)(nil)
 func (m *Manager) NewMPV(
 	ctx context.Context,
 	title string,
+	opts ...types.Option,
 ) (*MPV, error) {
-	r, err := NewMPV(ctx, title, m.Config.PathToMPV)
+	cfg := types.Options(opts).Config()
+	r, err := NewMPV(ctx, title, cfg.PathToMPV, cfg.LowLatency, cfg.CacheLength, cfg.CacheMaxSize)
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +74,12 @@ func NewMPV(
 	ctx context.Context,
 	title string,
 	pathToMPV string,
+	lowLatency bool,
+	cacheDuration *time.Duration,
+	cacheMaxSize uint64,
 ) (_ret *MPV, _err error) {
 	logger.Debugf(ctx, "NewMPV()")
-	defer func() { logger.Debugf(ctx, "/NewMPV(): %#+v %v", _ret, _err) }()
+	defer func() { logger.Debugf(ctx, "/NewMPV(): %#+v %v", spew.Sdump(_ret), _err) }()
 
 	if pathToMPV == "" {
 		pathToMPV = "mpv"
@@ -90,7 +97,10 @@ func NewMPV(
 	ctx, cancelFn := context.WithCancel(ctx)
 	p := &MPV{
 		PlayerCommon: PlayerCommon{
-			Title: title,
+			Title:         title,
+			LowLatency:    lowLatency,
+			CacheDuration: cacheDuration,
+			CacheMaxSize:  cacheMaxSize,
 		},
 		PathToMPV:  execPathToMPV,
 		EndCh:      make(chan struct{}),
@@ -131,8 +141,26 @@ func (p *MPV) execMPV(ctx context.Context) (_err error) {
 		"--no-osc",
 		"--no-osd-bar",
 		"--window-scale=1",
+		"--force-seekable=yes",
 		"--input-ipc-server=" + socketPath,
 		fmt.Sprintf("--title=%s", p.Title),
+	}
+	if p.LowLatency {
+		args = append(args,
+			"--profile=low-latency",
+		)
+	}
+	if p.CacheDuration != nil {
+		if *p.CacheDuration == 0 {
+			args = append(args, "--cache=no")
+		} else {
+			args = append(args, fmt.Sprintf("--cache-secs=%v", p.CacheDuration.Seconds()))
+		}
+	}
+	if p.CacheMaxSize > 0 {
+		args = append(args,
+			fmt.Sprintf("--demuxer-max-bytes=%d", p.CacheMaxSize),
+		)
 	}
 	switch observability.LogLevelFilter.GetLevel() {
 	case logger.LevelPanic, logger.LevelFatal:
@@ -305,7 +333,9 @@ func (p *MPV) mpvSet(
 	ctx context.Context,
 	key string,
 	value any,
-) error {
+) (_err error) {
+	logger.Debugf(ctx, "mpvSet(ctx, '%s', %v)", key, value)
+	defer func() { logger.Debugf(ctx, "/mpvSet(ctx, '%s', %v): %v", key, value, _err) }()
 	return p.timeboxedCall(ctx, func() error {
 		return p.MPVConn.Set(key, value)
 	})
@@ -314,7 +344,9 @@ func (p *MPV) mpvSet(
 func (p *MPV) mpvGet(
 	ctx context.Context,
 	key string,
-) (any, error) {
+) (_ret any, _err error) {
+	logger.Tracef(ctx, "mpvGet(ctx, '%s')", key)
+	defer func() { logger.Tracef(ctx, "/mpvGet(ctx, '%s'): %v %v", key, _ret, _err) }()
 	var result any
 	err := p.timeboxedCall(ctx, func() error {
 		var err error
@@ -327,7 +359,9 @@ func (p *MPV) mpvGet(
 func (p *MPV) mpvCall(
 	ctx context.Context,
 	args ...any,
-) (any, error) {
+) (_ret any, _err error) {
+	logger.Debugf(ctx, "mpvCall(ctx, %v)", args)
+	defer func() { logger.Debugf(ctx, "/mpvCall(ctx, %v): %v %v", args, _ret, _err) }()
 	var result any
 	err := p.timeboxedCall(ctx, func() error {
 		var err error
@@ -451,6 +485,47 @@ func (p *MPV) GetLength(
 	return time.Duration(ts * float64(time.Second)), nil
 }
 
+func (p *MPV) GetCachedDuration(
+	ctx context.Context,
+) (time.Duration, error) {
+	dur, err := p.getFloat64(ctx, "demuxer-cache-duration")
+	if err != nil {
+		return 0, err
+	}
+
+	return time.Duration(dur * float64(time.Second)), nil
+}
+
+func (p *MPV) Seek(
+	ctx context.Context,
+	pos time.Duration,
+	isRelative bool,
+	quick bool,
+) (_err error) {
+	logger.Tracef(ctx, "Seek(ctx, %v, %t, %t)", pos, isRelative, quick)
+	defer func() { logger.Tracef(ctx, "/Seek(ctx, %v, %t, %t): %v", pos, isRelative, quick, _err) }()
+	var flags []string
+	if isRelative {
+		flags = append(flags, "relative")
+	} else {
+		flags = append(flags, "absolute")
+	}
+	if quick {
+		flags = append(flags, "keyframes")
+	} else {
+		flags = append(flags, "exact")
+	}
+	args := []any{"seek", pos.Seconds()}
+	if len(flags) > 0 {
+		args = append(args, strings.Join(flags, "+"))
+	}
+	_, err := p.mpvCall(ctx, args...)
+	if err != nil {
+		return fmt.Errorf("unable to request 'seek'-ing: %w", err)
+	}
+	return nil
+}
+
 func (p *MPV) SetSpeed(
 	ctx context.Context,
 	speed float64,
@@ -506,6 +581,97 @@ func (p *MPV) GetDisplayScale(ctx context.Context) (float64, error) {
 
 func (p *MPV) SetDisplayScale(ctx context.Context, scale float64) error {
 	return p.mpvSet(ctx, "window-scale", scale)
+}
+
+func getTracks[E any, T []E](
+	ctx context.Context,
+	p *MPV,
+	trackType string,
+	fn func(trackID int64, isActive bool) E,
+) (T, error) {
+	resp, err := p.mpvGet(ctx, fmt.Sprintf("track-list/%s", trackType))
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the track list: %w", exec.ErrDot)
+	}
+	list, ok := resp.([]any)
+	if !ok {
+		return nil, fmt.Errorf("expected a slice of values, but received %T", resp)
+	}
+
+	result := make(T, 0, len(list))
+	for idx, item := range list {
+		m, ok := item.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("item #%d is expected to be a map[string]any, but received %T", idx, item)
+		}
+
+		trackIDI, ok := m["id"]
+		if !ok {
+			return nil, fmt.Errorf("item #%d does not has field 'id'")
+		}
+		trackID, ok := trackIDI.(float64)
+		if !ok {
+			return nil, fmt.Errorf("item #%d has field 'id' of an unexpected type: %T", trackIDI)
+		}
+
+		selectedI, ok := m["selected"]
+		if !ok {
+			return nil, fmt.Errorf("item #%d does not has field 'selected'")
+		}
+		selected, ok := selectedI.(bool)
+		if !ok {
+			return nil, fmt.Errorf("item #%d has field 'selected' of an unexpected type: %T", selectedI)
+		}
+
+		result = append(result, fn(int64(trackID), selected))
+	}
+
+	return result, nil
+}
+
+func (p *MPV) GetVideoTracks(
+	ctx context.Context,
+) (types.VideoTracks, error) {
+	return getTracks(ctx, p, "video", func(trackID int64, isActive bool) types.VideoTrack {
+		return types.VideoTrack{
+			ID:       trackID,
+			IsActive: isActive,
+		}
+	})
+}
+
+func (p *MPV) GetAudioTracks(
+	ctx context.Context,
+) (types.AudioTracks, error) {
+	return getTracks(ctx, p, "audio", func(trackID int64, isActive bool) types.AudioTrack {
+		return types.AudioTrack{
+			ID:       trackID,
+			IsActive: isActive,
+		}
+	})
+}
+
+func (p *MPV) GetSubtitlesTracks(
+	ctx context.Context,
+) (types.SubtitlesTracks, error) {
+	return getTracks[types.SubtitlesTrack](ctx, p, "sub", func(trackID int64, isActive bool) types.SubtitlesTrack {
+		return types.SubtitlesTrack{
+			ID:       trackID,
+			IsActive: isActive,
+		}
+	})
+}
+
+func (p *MPV) SetVideoTrack(ctx context.Context, vid int64) error {
+	return p.mpvSet(ctx, "vid", vid)
+}
+
+func (p *MPV) SetAudioTrack(ctx context.Context, aid int64) error {
+	return p.mpvSet(ctx, "aid", aid)
+}
+
+func (p *MPV) SetSubtitlesTrack(ctx context.Context, sid int64) error {
+	return p.mpvSet(ctx, "sid", sid)
 }
 
 const mpvQuitTimeout = time.Second
