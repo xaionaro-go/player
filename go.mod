@@ -24,7 +24,7 @@ require (
 	github.com/xaionaro-go/secret v0.0.0-20250111141743-ced12e1082c2
 	github.com/xaionaro-go/xfyne v0.0.0-20241018233531-26123724a6c6
 	github.com/xaionaro-go/xpath v0.0.0-20250111145115-55f5728f643f
-	github.com/xaionaro-go/xsync v0.0.0-20250113213958-aedf9c8786f5
+	github.com/xaionaro-go/xsync v0.0.0-20250420144932-1e27f4332d4d
 	golang.org/x/net v0.38.0
 	google.golang.org/grpc v1.69.2
 	google.golang.org/protobuf v1.36.2

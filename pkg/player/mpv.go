@@ -141,7 +141,6 @@ func (p *MPV) execMPV(ctx context.Context) (_err error) {
 		"--no-osc",
 		"--no-osd-bar",
 		"--window-scale=1",
-		"--force-seekable=yes",
 		"--input-ipc-server=" + socketPath,
 		fmt.Sprintf("--title=%s", p.Title),
 	}
@@ -589,9 +588,9 @@ func getTracks[E any, T []E](
 	trackType string,
 	fn func(trackID int64, isActive bool) E,
 ) (T, error) {
-	resp, err := p.mpvGet(ctx, fmt.Sprintf("track-list/%s", trackType))
+	resp, err := p.mpvGet(ctx, "track-list")
 	if err != nil {
-		return nil, fmt.Errorf("unable to get the track list: %w", exec.ErrDot)
+		return nil, fmt.Errorf("unable to get the %s track list: %w", trackType, exec.ErrDot)
 	}
 	list, ok := resp.([]any)
 	if !ok {
@@ -600,9 +599,23 @@ func getTracks[E any, T []E](
 
 	result := make(T, 0, len(list))
 	for idx, item := range list {
+		logger.Tracef(ctx, "%#+v", item)
 		m, ok := item.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("item #%d is expected to be a map[string]any, but received %T", idx, item)
+		}
+
+		typeI, ok := m["type"]
+		if !ok {
+			return nil, fmt.Errorf("item #%d does not has field 'type'")
+		}
+		typ, ok := typeI.(string)
+		if !ok {
+			return nil, fmt.Errorf("item #%d has field 'type' of an unexpected type: %T", typeI)
+		}
+
+		if typ != trackType {
+			continue
 		}
 
 		trackIDI, ok := m["id"]
