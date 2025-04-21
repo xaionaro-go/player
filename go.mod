@@ -12,20 +12,20 @@ require (
 	github.com/blang/mpv v0.0.0-20160810175505-d56d7352e068
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933
-	github.com/facebookincubator/go-belt v0.0.0-20250201205440-80b5034808e3
+	github.com/facebookincubator/go-belt v0.0.0-20250308011339-62fb7027b11f
 	github.com/goccy/go-yaml v1.15.13
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/spf13/pflag v1.0.6
 	github.com/xaionaro-go/audio v0.0.0-20250210102901-abfced9d5ef3
-	github.com/xaionaro-go/avpipeline v0.0.0-20250419161030-0dd37380c6e6
+	github.com/xaionaro-go/avpipeline v0.0.0-20250421151226-691631b82df8
 	github.com/xaionaro-go/datacounter v1.0.4
 	github.com/xaionaro-go/logwriter v0.0.0-20250111154941-c3f7a1a2d567
-	github.com/xaionaro-go/observability v0.0.0-20250309200059-047fad8d76e4
+	github.com/xaionaro-go/observability v0.0.0-20250420133500-5c4d2e045932
 	github.com/xaionaro-go/secret v0.0.0-20250111141743-ced12e1082c2
 	github.com/xaionaro-go/xfyne v0.0.0-20241018233531-26123724a6c6
 	github.com/xaionaro-go/xpath v0.0.0-20250111145115-55f5728f643f
 	github.com/xaionaro-go/xsync v0.0.0-20250420144932-1e27f4332d4d
-	golang.org/x/net v0.38.0
+	golang.org/x/net v0.39.0
 	google.golang.org/grpc v1.69.2
 	google.golang.org/protobuf v1.36.2
 )
@@ -34,7 +34,7 @@ require (
 	fyne.io/systray v1.11.0 // indirect
 	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/DataDog/gostackparse v0.7.0 // indirect
-	github.com/asticode/go-astikit v0.52.0 // indirect
+	github.com/asticode/go-astikit v0.54.0 // indirect
 	github.com/ebitengine/oto/v3 v3.3.2 // indirect
 	github.com/ebitengine/purego v0.8.0 // indirect
 	github.com/fredbi/uri v1.1.0 // indirect
@@ -55,25 +55,26 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/huandu/go-tls v0.0.0-20200109070953-6f75fb441850 // indirect
+	github.com/huandu/go-tls v1.0.1 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20240223122105-ce5225dcaa49 // indirect
 	github.com/jfreymuth/oggvorbis v1.0.5 // indirect
 	github.com/jfreymuth/vorbis v1.0.2 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
-	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.4.0 // indirect
-	github.com/phuslu/goid v1.0.1 // indirect
+	github.com/phuslu/goid v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rymdport/portal v0.3.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c // indirect
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
-	github.com/xaionaro-go/avmediacodec v0.0.0-20250406231401-a2c73dde769f // indirect
+	github.com/xaionaro-go/avmediacodec v0.0.0-20250421150856-ddd390422c21 // indirect
 	github.com/xaionaro-go/gorex v0.0.0-20241010205749-bcd59d639c4d // indirect
 	github.com/xaionaro-go/libsrt v0.0.0-20250105232601-e760c79b2bc3 // indirect
 	github.com/xaionaro-go/logrustash v0.0.0-20240804141650-d48034780a5f // indirect
+	github.com/xaionaro-go/ndk v0.0.0-20250420195304-361bb98583bf // indirect
 	github.com/xaionaro-go/object v0.0.0-20241026212449-753ce10ec94c // indirect
 	github.com/xaionaro-go/proxy v0.0.0-20250111150848-1f0e7b262638 // indirect
 	github.com/xaionaro-go/spinlock v0.0.0-20200518175509-30e6d1ce68a1 // indirect
@@ -82,7 +83,7 @@ require (
 	github.com/xaionaro-go/xcontext v0.0.0-20250111150717-e70e1f5b299c // indirect
 	github.com/yuin/goldmark v1.7.1 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
-	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
+	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0 // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/mobile v0.0.0-20231127183840-76ac6878050a // indirect
 	golang.org/x/sys v0.32.0 // indirect
@@ -90,5 +91,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	lukechampine.com/blake3 v1.3.0 // indirect
+	lukechampine.com/blake3 v1.4.0 // indirect
 )

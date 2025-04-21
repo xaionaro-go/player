@@ -607,11 +607,11 @@ func getTracks[E any, T []E](
 
 		typeI, ok := m["type"]
 		if !ok {
-			return nil, fmt.Errorf("item #%d does not has field 'type'")
+			return nil, fmt.Errorf("item #%d does not has field 'type'", idx)
 		}
 		typ, ok := typeI.(string)
 		if !ok {
-			return nil, fmt.Errorf("item #%d has field 'type' of an unexpected type: %T", typeI)
+			return nil, fmt.Errorf("item #%d has field 'type' of an unexpected type: %T", idx, typeI)
 		}
 
 		if typ != trackType {
@@ -620,20 +620,20 @@ func getTracks[E any, T []E](
 
 		trackIDI, ok := m["id"]
 		if !ok {
-			return nil, fmt.Errorf("item #%d does not has field 'id'")
+			return nil, fmt.Errorf("item #%d does not has field 'id'", idx)
 		}
 		trackID, ok := trackIDI.(float64)
 		if !ok {
-			return nil, fmt.Errorf("item #%d has field 'id' of an unexpected type: %T", trackIDI)
+			return nil, fmt.Errorf("item #%d has field 'id' of an unexpected type: %T", idx, trackIDI)
 		}
 
 		selectedI, ok := m["selected"]
 		if !ok {
-			return nil, fmt.Errorf("item #%d does not has field 'selected'")
+			return nil, fmt.Errorf("item #%d does not has field 'selected'", idx)
 		}
 		selected, ok := selectedI.(bool)
 		if !ok {
-			return nil, fmt.Errorf("item #%d has field 'selected' of an unexpected type: %T", selectedI)
+			return nil, fmt.Errorf("item #%d has field 'selected' of an unexpected type: %T", idx, selectedI)
 		}
 
 		result = append(result, fn(int64(trackID), selected))
