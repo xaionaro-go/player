@@ -6,6 +6,7 @@ import (
 	"image"
 	"io"
 	"math"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/xaionaro-go/observability"
 	"github.com/xaionaro-go/player/pkg/player/types"
 	"github.com/xaionaro-go/secret"
+	"github.com/xaionaro-go/xcontext"
 	"github.com/xaionaro-go/xsync"
 )
 
@@ -43,7 +45,10 @@ type Player struct {
 	videoStreamIndex      atomic.Uint32
 	audioStreamIndex      atomic.Uint32
 	endChan               chan struct{}
+	cancelFunc            context.CancelFunc
 }
+
+var _ types.Player = (*Player)(nil)
 
 func New(
 	ctx context.Context,
@@ -62,7 +67,7 @@ func New(
 func (*Player) SetupForStreaming(
 	ctx context.Context,
 ) error {
-	panic("not implemented, yet")
+	return nil
 }
 
 func (p *Player) OpenURL(
@@ -78,6 +83,22 @@ func (p *Player) openURL(
 	ctx context.Context,
 	link string,
 ) error {
+	if p.cancelFunc != nil {
+		return fmt.Errorf("player is already running; changing URLs is not implemented, yet")
+	}
+	ctx = xcontext.DetachDone(ctx)
+	ctx, cancelFn := context.WithCancel(ctx)
+	p.cancelFunc = cancelFn
+	var once sync.Once
+	stopFn := func() {
+		once.Do(func() {
+			p.locker.Do(ctx, func() {
+				p.cancelFunc()
+				p.cancelFunc = nil
+			})
+		})
+	}
+
 	inputCfg := kernel.InputConfig{}
 	input, err := kernel.NewInputFromURL(ctx, link, secret.New(""), inputCfg)
 	logger.Tracef(ctx, "NewInputFromURL(ctx, '%s', '', %#+v): %v", link, inputCfg, err)
@@ -105,10 +126,9 @@ func (p *Player) openURL(
 
 	p.onSeek(ctx)
 
-	ctx, cancelFn := context.WithCancel(ctx)
 	errCh := make(chan avpipeline.ErrNode, 1)
 	observability.Go(ctx, func() {
-		defer cancelFn()
+		defer stopFn()
 		select {
 		case <-ctx.Done():
 			return
@@ -121,8 +141,9 @@ func (p *Player) openURL(
 		}
 	})
 	observability.Go(ctx, func() {
+		defer close(errCh)
+		defer p.onEnd()
 		avpipeline.ServeRecursively(ctx, avpipeline.ServeConfig{}, errCh, inputNode)
-		p.onEnd()
 	})
 
 	p.currentURL = link
@@ -333,24 +354,35 @@ func (p *Player) IsEnded(
 }
 
 func (p *Player) isEnded() bool {
-	return p.currentURL != ""
+	return p.currentURL == ""
 }
 
 func (p *Player) GetPosition(
 	ctx context.Context,
-) (time.Duration, error) {
+) (_ret time.Duration, _err error) {
+	logger.Tracef(ctx, "GetPosition")
+	defer func() { logger.Tracef(ctx, "/GetPosition: %v %v", _ret, _err) }()
 	return xsync.DoR2(ctx, &p.locker, func() (time.Duration, error) {
 		if p.isEnded() {
 			return 0, fmt.Errorf("the player is not started or already ended")
 		}
-
-		return (p.previousVideoPosition + p.currentAudioPosition) / 2, nil
+		switch {
+		case p.previousVideoPosition != 0 && p.currentAudioPosition != 0:
+			return (p.previousVideoPosition + p.currentAudioPosition) / 2, nil
+		case p.currentAudioPosition != 0:
+			return p.currentAudioPosition, nil
+		case p.previousVideoPosition != 0:
+			return p.previousVideoPosition, nil
+		}
+		return 0, nil
 	})
 }
 
 func (p *Player) GetLength(
 	ctx context.Context,
-) (time.Duration, error) {
+) (_ret time.Duration, _err error) {
+	logger.Tracef(ctx, "GetLength")
+	defer func() { logger.Tracef(ctx, "/GetLength: %v %v", _ret, _err) }()
 	return xsync.DoR2(ctx, &p.locker, func() (time.Duration, error) {
 		if p.isEnded() {
 			return 0, fmt.Errorf("the player is not started or already ended")
@@ -399,7 +431,7 @@ func (*Player) SetSpeed(
 func (*Player) GetPause(
 	ctx context.Context,
 ) (bool, error) {
-	panic("not implemented, yet")
+	return false, nil
 }
 
 func (*Player) SetPause(

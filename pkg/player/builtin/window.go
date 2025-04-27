@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"github.com/facebookincubator/go-belt/tool/logger"
 	"github.com/xaionaro-go/audio/pkg/audio"
 	"github.com/xaionaro-go/player/pkg/player/types"
 )
@@ -55,19 +56,30 @@ func (r *WindowRenderer) GetImage(w, h int) image.Image {
 	return r.currentImage
 }
 
+func (r *WindowRenderer) Close() error {
+	r.window.Hide()
+	r.window.Close()
+	return nil
+}
+
 func NewWindow(
 	ctx context.Context,
 	title string,
 	opts ...types.Option,
 ) *Player {
+	logger.Debugf(ctx, "NewWindow(ctx, '%s', %#+v)", title, opts)
+	cfg := types.Options(opts).Config()
 	r := &WindowRenderer{
-		window: fyne.CurrentApp().NewWindow(title),
+		window:       fyne.CurrentApp().NewWindow(title),
+		currentImage: image.NewRGBA(image.Rect(0, 0, 1, 1)),
 	}
 	r.imageRaster = canvas.NewRaster(r.GetImage)
 	r.imageRaster.ScaleMode = canvas.ImageScaleFastest
 	r.imageRaster.Show()
 	r.window.SetContent(container.NewStack(r.imageRaster))
-	r.window.Show()
+	if !cfg.HideWindow {
+		r.window.Show()
+	}
 	return New(
 		ctx,
 		r,

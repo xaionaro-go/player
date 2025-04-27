@@ -59,7 +59,17 @@ func (m *Manager) NewMPV(
 	opts ...types.Option,
 ) (*MPV, error) {
 	cfg := types.Options(opts).Config()
-	r, err := NewMPV(ctx, title, cfg.PathToMPV, cfg.LowLatency, cfg.CacheLength, cfg.CacheMaxSize)
+	vid := 1
+	if cfg.HideWindow {
+		vid = 0
+	}
+	r, err := NewMPV(
+		ctx, title,
+		cfg.PathToMPV,
+		cfg.LowLatency,
+		cfg.CacheLength, cfg.CacheMaxSize,
+		vid,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +87,7 @@ func NewMPV(
 	lowLatency bool,
 	cacheDuration *time.Duration,
 	cacheMaxSize uint64,
+	videoTrackID int,
 ) (_ret *MPV, _err error) {
 	logger.Debugf(ctx, "NewMPV()")
 	defer func() { logger.Debugf(ctx, "/NewMPV(): %#+v %v", spew.Sdump(_ret), _err) }()
@@ -106,14 +117,17 @@ func NewMPV(
 		EndCh:      make(chan struct{}),
 		CancelFunc: cancelFn,
 	}
-	err = p.execMPV(ctx)
+	err = p.execMPV(ctx, videoTrackID)
 	if err != nil {
 		return nil, err
 	}
 	return p, nil
 }
 
-func (p *MPV) execMPV(ctx context.Context) (_err error) {
+func (p *MPV) execMPV(
+	ctx context.Context,
+	videoTrackID int,
+) (_err error) {
 	logger.Debugf(ctx, "execMPV()")
 	defer func() { logger.Debugf(ctx, "/execMPV(): %v", _err) }()
 
@@ -143,6 +157,14 @@ func (p *MPV) execMPV(ctx context.Context) (_err error) {
 		"--window-scale=1",
 		"--input-ipc-server=" + socketPath,
 		fmt.Sprintf("--title=%s", p.Title),
+		fmt.Sprintf("-vid=%d", videoTrackID),
+	}
+	switch runtime.GOOS {
+	case "windows":
+		args = append(args,
+			"-vo=direct3d",
+			"-ao=sdl",
+		)
 	}
 	if p.LowLatency {
 		args = append(args,
@@ -250,7 +272,7 @@ func (p *MPV) execMPV(ctx context.Context) (_err error) {
 			default:
 			}
 			logger.Debugf(ctx, "rerunning the player")
-			err = p.execMPV(ctx)
+			err = p.execMPV(ctx, videoTrackID)
 			if err != nil {
 				logger.Error(ctx, "unable to rerun the player: %v", err)
 			}

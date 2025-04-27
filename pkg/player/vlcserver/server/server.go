@@ -12,10 +12,15 @@ import (
 	"github.com/facebookincubator/go-belt"
 	"github.com/facebookincubator/go-belt/tool/logger"
 	"github.com/facebookincubator/go-belt/tool/logger/implementation/logrus"
+	"github.com/xaionaro-go/observability"
 	"github.com/xaionaro-go/player/pkg/player/protobuf/go/player_grpc"
 	"github.com/xaionaro-go/player/pkg/player/vlcserver/player"
 	"github.com/xaionaro-go/xsync"
 	"google.golang.org/grpc"
+)
+
+const (
+	timeoutCloseVLC = 10 * time.Second
 )
 
 type GRPCServer struct {
@@ -69,7 +74,9 @@ func (srv *GRPCServer) Open(
 	req *player_grpc.OpenRequest,
 ) (*player_grpc.OpenReply, error) {
 	return xsync.DoR2(ctx, &srv.VLCLocker, func() (*player_grpc.OpenReply, error) {
-		srv.close(ctx)
+		if err := srv.closePlayer(ctx); err != nil {
+			logger.Errorf(ctx, "unable to close the player: %w", err)
+		}
 
 		var err error
 		srv.VLC, err = player.NewVLC(req.GetTitle())
@@ -77,7 +84,7 @@ func (srv *GRPCServer) Open(
 			return nil, fmt.Errorf("unable to initialize the VLC player: %w", err)
 		}
 
-		if err := srv.VLC.OpenURL(req.Link); err != nil {
+		if err := srv.VLC.OpenURL(ctx, req.Link); err != nil {
 			return nil, fmt.Errorf("unable to open link '%s': %w", req.Link, err)
 		}
 
@@ -116,8 +123,12 @@ func (srv *GRPCServer) ProcessTitle(
 	if err := srv.isInited(); err != nil {
 		return nil, err
 	}
+	title, err := srv.VLC.ProcessTitle(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the title: %w", err)
+	}
 	return &player_grpc.ProcessTitleReply{
-		Title: srv.VLC.ProcessTitle(),
+		Title: title,
 	}, nil
 }
 
@@ -128,8 +139,12 @@ func (srv *GRPCServer) GetLink(
 	if err := srv.isInited(); err != nil {
 		return nil, err
 	}
+	link, err := srv.VLC.GetLink(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the title: %w", err)
+	}
 	return &player_grpc.GetLinkReply{
-		Link: srv.VLC.GetLink(),
+		Link: link,
 	}, nil
 }
 
@@ -148,10 +163,14 @@ func (srv *GRPCServer) EndChan(
 	}
 
 	for {
+		ch, err := srv.VLC.EndChan(ctx)
+		if err != nil {
+			return fmt.Errorf("unable to get the EndChan: %w", err)
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-srv.VLC.EndChan():
+		case <-ch:
 		}
 
 		return server.Send(&player_grpc.EndChanReply{})
@@ -165,8 +184,12 @@ func (srv *GRPCServer) IsEnded(
 	if err := srv.isInited(); err != nil {
 		return nil, err
 	}
+	isEnded, err := srv.VLC.IsEnded(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get if it is already ended: %w", err)
+	}
 	return &player_grpc.IsEndedReply{
-		IsEnded: srv.VLC.IsEnded(),
+		IsEnded: isEnded,
 	}, nil
 }
 
@@ -177,8 +200,12 @@ func (srv *GRPCServer) GetPosition(
 	if err := srv.isInited(); err != nil {
 		return nil, err
 	}
+	pos, err := srv.VLC.GetPosition(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the position: %w", err)
+	}
 	return &player_grpc.GetPositionReply{
-		PositionSecs: srv.VLC.GetPosition().Seconds(),
+		PositionSecs: pos.Seconds(),
 	}, nil
 }
 
@@ -189,8 +216,12 @@ func (srv *GRPCServer) GetLength(
 	if err := srv.isInited(); err != nil {
 		return nil, err
 	}
+	length, err := srv.VLC.GetLength(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the length: %w", err)
+	}
 	return &player_grpc.GetLengthReply{
-		LengthSecs: srv.VLC.GetLength().Seconds(),
+		LengthSecs: length.Seconds(),
 	}, nil
 }
 
@@ -201,7 +232,7 @@ func (srv *GRPCServer) GetSpeed(
 	if err := srv.isInited(); err != nil {
 		return nil, err
 	}
-	speed, err := srv.VLC.GetSpeed()
+	speed, err := srv.VLC.GetSpeed(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to set speed to '%v': %w", speed, err)
 	}
@@ -217,7 +248,7 @@ func (srv *GRPCServer) SetSpeed(
 	if err := srv.isInited(); err != nil {
 		return nil, err
 	}
-	if err := srv.VLC.SetSpeed(req.GetSpeed()); err != nil {
+	if err := srv.VLC.SetSpeed(ctx, req.GetSpeed()); err != nil {
 		return nil, fmt.Errorf("unable to set speed to '%v': %w", req.GetSpeed(), err)
 	}
 	return &player_grpc.SetSpeedReply{}, nil
@@ -230,7 +261,7 @@ func (srv *GRPCServer) GetPause(
 	if err := srv.isInited(); err != nil {
 		return nil, err
 	}
-	isPaused, err := srv.VLC.GetPause()
+	isPaused, err := srv.VLC.GetPause(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get the info if it is paused: %w", err)
 	}
@@ -246,7 +277,7 @@ func (srv *GRPCServer) SetPause(
 	if err := srv.isInited(); err != nil {
 		return nil, err
 	}
-	if err := srv.VLC.SetPause(req.GetIsPaused()); err != nil {
+	if err := srv.VLC.SetPause(ctx, req.GetIsPaused()); err != nil {
 		return nil, fmt.Errorf("unable to set paused state to '%v': %w", req.GetIsPaused(), err)
 	}
 	return &player_grpc.SetPauseReply{}, nil
@@ -277,7 +308,7 @@ func (srv *GRPCServer) GetVideoTracks(
 	}
 	result, err := srv.VLC.GetVideoTracks(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get video tracks to '%v': %w", err)
+		return nil, fmt.Errorf("unable to get video tracks: %w", err)
 	}
 	resp := &player_grpc.GetVideoTracksReply{}
 	for _, track := range result {
@@ -298,7 +329,7 @@ func (srv *GRPCServer) GetAudioTracks(
 	}
 	result, err := srv.VLC.GetAudioTracks(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get audio tracks to '%v': %w", err)
+		return nil, fmt.Errorf("unable to get audio tracks: %w", err)
 	}
 	resp := &player_grpc.GetAudioTracksReply{}
 	for _, track := range result {
@@ -319,7 +350,7 @@ func (srv *GRPCServer) GetSubtitlesTracks(
 	}
 	result, err := srv.VLC.GetSubtitlesTracks(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get subtitles tracks to '%v': %w", err)
+		return nil, fmt.Errorf("unable to get subtitles tracks: %w", err)
 	}
 	resp := &player_grpc.GetSubtitlesTracksReply{}
 	for _, track := range result {
@@ -377,7 +408,7 @@ func (srv *GRPCServer) Stop(
 	if err := srv.isInited(); err != nil {
 		return nil, err
 	}
-	if err := srv.VLC.Stop(); err != nil {
+	if err := srv.VLC.Stop(ctx); err != nil {
 		return nil, fmt.Errorf("unable to stop the playback: %w", err)
 	}
 	return &player_grpc.StopReply{}, nil
@@ -388,7 +419,7 @@ func (srv *GRPCServer) Close(
 	req *player_grpc.CloseRequest,
 ) (*player_grpc.CloseReply, error) {
 	if err := srv.isInited(); err != nil {
-		return nil, err
+		return nil, nil
 	}
 	return xsync.DoR2(ctx, &srv.VLCLocker, func() (*player_grpc.CloseReply, error) {
 		if err := srv.close(ctx); err != nil {
@@ -398,18 +429,56 @@ func (srv *GRPCServer) Close(
 	})
 }
 
-func (srv *GRPCServer) close(
-	_ context.Context,
-) error {
+func (srv *GRPCServer) closePlayer(
+	ctx context.Context,
+) (_err error) {
+	logger.Debugf(ctx, "closePlayer")
+	defer func() { logger.Debugf(ctx, "/closePlayer: %v", _err) }()
 	defer func() {
 		srv.VLC = nil
-		srv.Belt = nil
 	}()
+
 	if srv.VLC == nil {
 		return nil
 	}
-	if err := srv.VLC.Close(); err != nil {
-		return fmt.Errorf("unable to stop the playback: %w", err)
+
+	ctx, cancelFn := context.WithTimeout(ctx, timeoutCloseVLC)
+	defer cancelFn()
+	errCh := make(chan error, 1)
+	observability.Go(ctx, func() {
+		defer close(errCh)
+		if err := srv.VLC.Close(ctx); err != nil {
+			errCh <- fmt.Errorf("unable to stop the playback: %w", err)
+			return
+		}
+		errCh <- nil
+	})
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("closing takes too long: %w", ctx.Err())
+	case err := <-errCh:
+		return err
 	}
+}
+
+func (srv *GRPCServer) close(
+	ctx context.Context,
+) (_err error) {
+	logger.Debugf(ctx, "close")
+	defer func() { logger.Debugf(ctx, "/close: %v", _err) }()
+
+	defer func() {
+		if srv.GRPCServer != nil {
+			logger.Debugf(ctx, "closing the GRPCServer")
+			srv.GRPCServer.Stop()
+		}
+		srv.Belt = nil
+	}()
+
+	err := srv.closePlayer(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to close the player: %w", err)
+	}
+
 	return nil
 }

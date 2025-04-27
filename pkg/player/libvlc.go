@@ -6,6 +6,7 @@ package player
 import (
 	"context"
 
+	"github.com/facebookincubator/go-belt/tool/logger"
 	"github.com/xaionaro-go/player/pkg/player/types"
 	"github.com/xaionaro-go/player/pkg/player/vlcserver"
 )
@@ -17,6 +18,12 @@ func (m *Manager) NewLibVLC(
 	title string,
 	opts ...types.Option,
 ) (*LibVLC, error) {
+	cfg := types.Options(opts).Config()
+
+	if cfg.HideWindow {
+		logger.Errorf(ctx, "hiding the VLC window is not supported, et")
+	}
+
 	r, err := NewLibVLC(ctx, title)
 	if err != nil {
 		return nil, err

@@ -10,12 +10,14 @@ import (
 )
 
 type ImageRenderer interface {
+	io.Closer
 	SetImage(img image.Image) error
 	Render() error
 	SetVisible(bool) error
 }
 
 type AudioRenderer interface {
+	io.Closer
 	PlayPCM(
 		ctx context.Context,
 		sampleRate audio.SampleRate,

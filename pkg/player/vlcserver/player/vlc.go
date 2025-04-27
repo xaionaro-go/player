@@ -4,17 +4,16 @@
 package player
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"sync/atomic"
 	"time"
 
 	vlc "github.com/adrg/libvlc-go/v3"
-	"github.com/facebookincubator/go-belt/tool/logger"
 	"github.com/hashicorp/go-multierror"
 	"github.com/xaionaro-go/player/pkg/player/types"
 	"github.com/xaionaro-go/xsync"
-	"golang.org/x/net/context"
 )
 
 type VLC struct {
@@ -76,12 +75,17 @@ func NewVLC(title string) (*VLC, error) {
 	return p, nil
 }
 
-func (p *VLC) ProcessTitle() string {
-	return p.Title
+func (p *VLC) ProcessTitle(
+	ctx context.Context,
+) (string, error) {
+	return p.Title, nil
 }
 
-func (p *VLC) OpenURL(link string) error {
-	return xsync.DoA1R1(context.TODO(), &p.StatusMutex, p.openURL, link)
+func (p *VLC) OpenURL(
+	ctx context.Context,
+	link string,
+) error {
+	return xsync.DoA1R1(ctx, &p.StatusMutex, p.openURL, link)
 }
 
 func (p *VLC) openURL(link string) error {
@@ -111,55 +115,66 @@ func (p *VLC) openURL(link string) error {
 	return nil
 }
 
-func (p *VLC) GetLink() string {
-	ctx := context.TODO()
+func (p *VLC) GetLink(
+	ctx context.Context,
+) (string, error) {
 	return xsync.DoR1(ctx, &p.StatusMutex, func() string {
 		return p.LastURL
-	})
+	}), nil
 }
 
-func (p *VLC) EndChan() <-chan struct{} {
-	ctx := context.TODO()
+func (p *VLC) EndChan(
+	ctx context.Context,
+) (<-chan struct{}, error) {
 	return xsync.DoR1(ctx, &p.StatusMutex, func() <-chan struct{} {
 		return p.EndCh
-	})
+	}), nil
 }
 
-func (p *VLC) IsEnded() bool {
-	ctx := context.TODO()
+func (p *VLC) IsEnded(
+	ctx context.Context,
+) (bool, error) {
 	return xsync.DoR1(ctx, &p.StatusMutex, func() bool {
 		return p.IsStopped
-	})
+	}), nil
 }
 
-func (p *VLC) GetPosition() time.Duration {
+func (p *VLC) GetPosition(
+	ctx context.Context,
+) (time.Duration, error) {
 	ts, err := p.Player.MediaTime()
 	if err != nil {
-		logger.Tracef(context.TODO(), "unable to get current position: %v", err)
-		return 0
+		return 0, fmt.Errorf("unable to get current position: %w", err)
 	}
-	return time.Duration(ts) * time.Millisecond
+	return time.Duration(ts) * time.Millisecond, nil
 }
 
-func (p *VLC) GetLength() time.Duration {
+func (p *VLC) GetLength(
+	ctx context.Context,
+) (time.Duration, error) {
 	ts, err := p.Player.MediaLength()
 	if err != nil {
-		logger.Debugf(context.TODO(), "unable to get the total length: %v", err)
-		return 0
+		return 0, fmt.Errorf("unable to get the total length: %w", err)
 	}
-	return time.Duration(ts) * time.Millisecond
+	return time.Duration(ts) * time.Millisecond, nil
 }
 
-func (p *VLC) GetSpeed() (float64, error) {
+func (p *VLC) GetSpeed(
+	ctx context.Context,
+) (float64, error) {
 	return float64(p.Player.PlaybackRate()), nil
 }
 
-func (p *VLC) SetSpeed(speed float64) error {
+func (p *VLC) SetSpeed(
+	ctx context.Context,
+	speed float64,
+) error {
 	return p.Player.SetPlaybackRate(float32(speed))
 }
 
-func (p *VLC) Play() error {
-	ctx := context.TODO()
+func (p *VLC) Play(
+	ctx context.Context,
+) error {
 	return xsync.DoR1(ctx, &p.StatusMutex, p.play)
 }
 
@@ -172,11 +187,16 @@ func (p *VLC) play() error {
 	return nil
 }
 
-func (p *VLC) GetPause() (bool, error) {
+func (p *VLC) GetPause(
+	ctx context.Context,
+) (bool, error) {
 	return !p.Player.IsPlaying(), nil
 }
 
-func (p *VLC) SetPause(pause bool) error {
+func (p *VLC) SetPause(
+	ctx context.Context,
+	pause bool,
+) error {
 	return p.Player.SetPause(pause)
 }
 
@@ -279,8 +299,9 @@ func (p *VLC) SetSubtitlesTrack(
 	return p.Player.SetSubtitleTrack(int(sid))
 }
 
-func (p *VLC) Stop() error {
-	ctx := context.TODO()
+func (p *VLC) Stop(
+	ctx context.Context,
+) error {
 	return xsync.DoR1(ctx, &p.StatusMutex, p.stop)
 }
 
@@ -293,12 +314,13 @@ func (p *VLC) stop() error {
 	return nil
 }
 
-func (p *VLC) Close() error {
-	ctx := context.TODO()
-	return xsync.DoR1(ctx, &p.StatusMutex, p.close)
+func (p *VLC) Close(ctx context.Context) error {
+	return xsync.DoA1R1(ctx, &p.StatusMutex, p.close, ctx)
 }
 
-func (p *VLC) close() error {
+func (p *VLC) close(
+	ctx context.Context,
+) error {
 	if p.DetachEventsFunc != nil {
 		p.DetachEventsFunc()
 		p.DetachEventsFunc = nil
@@ -312,4 +334,10 @@ func (p *VLC) close() error {
 	).ErrorOrNil()
 	atomic.AddInt64(&vlcPlayerCounter, -1)
 	return err
+}
+
+func (p *VLC) SetupForStreaming(
+	ctx context.Context,
+) error {
+	return nil
 }

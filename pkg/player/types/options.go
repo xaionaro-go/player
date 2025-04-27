@@ -47,3 +47,9 @@ type OptionCacheMaxSize uint64
 func (opt OptionCacheMaxSize) Apply(cfg *Config) {
 	cfg.CacheMaxSize = uint64(opt)
 }
+
+type OptionHideWindow bool
+
+func (opt OptionHideWindow) Apply(cfg *Config) {
+	cfg.HideWindow = bool(opt)
+}
