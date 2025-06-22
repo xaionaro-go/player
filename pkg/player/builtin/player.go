@@ -17,6 +17,7 @@ import (
 	"github.com/xaionaro-go/avpipeline/codec"
 	"github.com/xaionaro-go/avpipeline/frame"
 	"github.com/xaionaro-go/avpipeline/kernel"
+	"github.com/xaionaro-go/avpipeline/node"
 	"github.com/xaionaro-go/avpipeline/processor"
 	"github.com/xaionaro-go/observability"
 	"github.com/xaionaro-go/player/pkg/player/types"
@@ -106,27 +107,27 @@ func (p *Player) openURL(
 		return fmt.Errorf("unable to open '%s': %w", link, err)
 	}
 
-	inputNode := avpipeline.NewNodeFromKernel(
+	inputNode := node.NewFromKernel(
 		ctx,
 		input,
 		processor.DefaultOptionsInput()...,
 	)
-	decoderNode := avpipeline.NewNodeFromKernel(
+	decoderNode := node.NewFromKernel(
 		ctx,
 		kernel.NewDecoder(ctx, codec.NewNaiveDecoderFactory(ctx, 0, "", nil, nil)),
 		processor.DefaultOptionsRecoder()...,
 	)
-	playerNode := avpipeline.NewNodeFromKernel(
+	playerNode := node.NewFromKernel(
 		ctx,
 		p,
 		processor.DefaultOptionsRecoder()...,
 	)
-	inputNode.PushPacketsTo.Add(decoderNode)
-	decoderNode.PushFramesTo.Add(playerNode)
+	inputNode.AddPushPacketsTo(decoderNode)
+	decoderNode.AddPushFramesTo(playerNode)
 
 	p.onSeek(ctx)
 
-	errCh := make(chan avpipeline.ErrNode, 1)
+	errCh := make(chan node.Error, 1)
 	observability.Go(ctx, func(ctx context.Context) {
 		defer stopFn()
 		select {
@@ -143,7 +144,7 @@ func (p *Player) openURL(
 	observability.Go(ctx, func(ctx context.Context) {
 		defer close(errCh)
 		defer p.onEnd()
-		avpipeline.ServeRecursively(ctx, avpipeline.ServeConfig{}, errCh, inputNode)
+		avpipeline.Serve(ctx, avpipeline.ServeConfig{}, errCh, inputNode)
 	})
 
 	p.currentURL = link
@@ -265,11 +266,11 @@ func (p *Player) processAudioFrame(
 			return fmt.Errorf("unable to get the buffer size: %w", err)
 		}
 
-		codecCtx := frame.CodecContext
-		sampleRate := codecCtx.SampleRate()
-		channels := codecCtx.ChannelLayout().Channels()
-		pcmFormatAV := codecCtx.SampleFormat()
-		codecID := codecCtx.CodecID()
+		codecParams := frame.CodecParameters
+		sampleRate := codecParams.SampleRate()
+		channels := codecParams.ChannelLayout().Channels()
+		pcmFormatAV := codecParams.SampleFormat()
+		codecID := codecParams.CodecID()
 		logger.Debugf(ctx, "codecID == %v, sampleRate == %v, channels == %v, pcmFormat == %v", codecID, sampleRate, channels, pcmFormatAV)
 		bufferSize := BufferSizeAudio
 		pcmFormat := pcmFormatToAudio(pcmFormatAV)
