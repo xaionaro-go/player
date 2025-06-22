@@ -93,7 +93,7 @@ func runInTheSameProcess(
 ) (*VLC, error) {
 	addrCh := make(chan net.Addr, 1)
 	errCh := make(chan error, 1)
-	observability.Go(ctx, func() {
+	observability.Go(ctx, func(ctx context.Context) {
 		errCh <- runVLCServer(ctx, func(reportedAddr net.Addr) error {
 			addrCh <- reportedAddr
 			return nil

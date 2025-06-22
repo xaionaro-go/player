@@ -254,7 +254,7 @@ func (p *MPV) execMPV(
 	p.MPVConn = mpvConn
 
 	if restartMPV {
-		observability.Go(ctx, func() {
+		observability.Go(ctx, func(ctx context.Context) {
 			err := p.Cmd.Wait()
 			logger.Debugf(ctx, "player was closed: %v", err)
 			link := p.OpenLinkOnRerun
@@ -335,7 +335,7 @@ func (p *MPV) timeboxedCall(
 	endedCh := make(chan struct{})
 
 	var err error
-	observability.Go(ctx, func() {
+	observability.Go(ctx, func(ctx context.Context) {
 		err = fn()
 		close(endedCh)
 	})
@@ -449,7 +449,7 @@ func (p *MPV) initEndCh(
 	if p.EndChInitialized {
 		return
 	}
-	observability.Go(ctx, func() {
+	observability.Go(ctx, func(ctx context.Context) {
 		func() {
 			t := time.NewTimer(time.Millisecond * 100)
 			defer t.Stop()

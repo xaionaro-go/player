@@ -127,7 +127,7 @@ func (p *Player) openURL(
 	p.onSeek(ctx)
 
 	errCh := make(chan avpipeline.ErrNode, 1)
-	observability.Go(ctx, func() {
+	observability.Go(ctx, func(ctx context.Context) {
 		defer stopFn()
 		select {
 		case <-ctx.Done():
@@ -140,7 +140,7 @@ func (p *Player) openURL(
 			}
 		}
 	})
-	observability.Go(ctx, func() {
+	observability.Go(ctx, func(ctx context.Context) {
 		defer close(errCh)
 		defer p.onEnd()
 		avpipeline.ServeRecursively(ctx, avpipeline.ServeConfig{}, errCh, inputNode)

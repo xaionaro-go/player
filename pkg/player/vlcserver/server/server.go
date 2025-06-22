@@ -445,7 +445,7 @@ func (srv *GRPCServer) closePlayer(
 	ctx, cancelFn := context.WithTimeout(ctx, timeoutCloseVLC)
 	defer cancelFn()
 	errCh := make(chan error, 1)
-	observability.Go(ctx, func() {
+	observability.Go(ctx, func(ctx context.Context) {
 		defer close(errCh)
 		if err := srv.VLC.Close(ctx); err != nil {
 			errCh <- fmt.Errorf("unable to stop the playback: %w", err)

@@ -69,7 +69,10 @@ func main() {
 	mediaPath := pflag.Arg(0)
 
 	if *netPprofAddr != "" {
-		observability.Go(ctx, func() { l.Error(http.ListenAndServe(*netPprofAddr, nil)) })
+		observability.Go(ctx, func(
+			context.Context) {
+			l.Error(http.ListenAndServe(*netPprofAddr, nil))
+		})
 	}
 
 	err := child_process_manager.InitializeChildProcessManager()
@@ -99,7 +102,7 @@ func main() {
 		logger.Fatalf(ctx, "unable to open the url '%s': %v", mediaPath, err)
 	}
 
-	observability.Go(ctx, func() {
+	observability.Go(ctx, func(ctx context.Context) {
 		ch, err := p.EndChan(ctx)
 		if err != nil {
 			panic(err)
@@ -236,7 +239,7 @@ func main() {
 	})
 
 	posLabel := widget.NewLabel("")
-	observability.Go(ctx, func() {
+	observability.Go(ctx, func(ctx context.Context) {
 		t := time.NewTicker(time.Millisecond * 100)
 		for {
 			<-t.C
