@@ -114,7 +114,7 @@ func (p *Player) openURL(
 	)
 	decoderNode := node.NewFromKernel(
 		ctx,
-		kernel.NewDecoder(ctx, codec.NewNaiveDecoderFactory(ctx, 0, "", nil, nil)),
+		kernel.NewDecoder(ctx, codec.NewNaiveDecoderFactory(ctx, 0, "", nil, nil, nil)),
 		processor.DefaultOptionsRecoder()...,
 	)
 	playerNode := node.NewFromKernel(
