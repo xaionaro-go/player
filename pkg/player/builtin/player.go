@@ -30,8 +30,8 @@ const (
 	BufferSizeAudio = 100 * time.Millisecond
 )
 
-type Player struct {
-	ImageRenderer
+type Player[I ImageAny] struct {
+	ImageRenderer[I]
 	AudioRenderer
 	lastSeekAt            time.Time
 	audioWriter           io.WriteCloser
@@ -49,14 +49,14 @@ type Player struct {
 	cancelFunc            context.CancelFunc
 }
 
-var _ types.Player = (*Player)(nil)
+var _ types.Player = (*Player[ImageGeneric])(nil)
 
-func New(
+func New[I ImageAny](
 	ctx context.Context,
-	imageRenderer ImageRenderer,
+	imageRenderer ImageRenderer[I],
 	audioRenderer AudioRenderer,
-) *Player {
-	p := &Player{
+) *Player[I] {
+	p := &Player[I]{
 		ImageRenderer: imageRenderer,
 		AudioRenderer: audioRenderer,
 		endChan:       make(chan struct{}),
@@ -65,13 +65,13 @@ func New(
 	return p
 }
 
-func (*Player) SetupForStreaming(
+func (*Player[I]) SetupForStreaming(
 	ctx context.Context,
 ) error {
 	return nil
 }
 
-func (p *Player) OpenURL(
+func (p *Player[I]) OpenURL(
 	ctx context.Context,
 	link string,
 ) (_err error) {
@@ -80,7 +80,7 @@ func (p *Player) OpenURL(
 	return xsync.DoA2R1(ctx, &p.locker, p.openURL, ctx, link)
 }
 
-func (p *Player) openURL(
+func (p *Player[I]) openURL(
 	ctx context.Context,
 	link string,
 ) error {
@@ -149,14 +149,16 @@ func (p *Player) openURL(
 
 	p.currentURL = link
 	if p.ImageRenderer != nil {
-		if err := p.ImageRenderer.SetVisible(true); err != nil {
-			return fmt.Errorf("unable to make the image renderer visible: %w", err)
+		if v, ok := p.ImageRenderer.(SetVisibler); ok {
+			if err := v.SetVisible(true); err != nil {
+				return fmt.Errorf("unable to make the image renderer visible: %w", err)
+			}
 		}
 	}
 	return nil
 }
 
-func (p *Player) processFrame(
+func (p *Player[I]) processFrame(
 	ctx context.Context,
 	frame frame.Input,
 ) error {
@@ -177,7 +179,7 @@ func (p *Player) processFrame(
 	})
 }
 
-func (p *Player) onSeek(
+func (p *Player[I]) onSeek(
 	ctx context.Context,
 ) {
 	logger.Tracef(ctx, "onSeek")
@@ -186,9 +188,9 @@ func (p *Player) onSeek(
 	p.lastSeekAt = time.Now()
 }
 
-func (p *Player) processVideoFrame(
+func (p *Player[I]) processVideoFrame(
 	ctx context.Context,
-	frame frame.Input,
+	f frame.Input,
 ) error {
 	logger.Tracef(ctx, "processVideoFrame")
 	defer logger.Tracef(ctx, "/processVideoFrame")
@@ -196,11 +198,11 @@ func (p *Player) processVideoFrame(
 		return nil
 	}
 
-	p.currentDuration = frame.GetStreamDurationAsDuration()
-	streamIdx := frame.GetStreamIndex()
+	p.currentDuration = f.GetStreamDurationAsDuration()
+	streamIdx := f.GetStreamIndex()
 
 	if p.videoStreamIndex.CompareAndSwap(math.MaxUint32, uint32(streamIdx)) { // atomics are not really needed because all of this happens while holding p.locker
-		if err := p.initImageFor(ctx, frame); err != nil {
+		if err := p.initImageFor(ctx, f); err != nil {
 			return fmt.Errorf("unable to initialize an image variable for the frame: %w", err)
 		}
 	} else {
@@ -210,10 +212,22 @@ func (p *Player) processVideoFrame(
 		}
 	}
 
-	frame.Data().ToImage(p.currentImage)
+	switch r := p.ImageRenderer.(type) {
+	case ImageRenderer[frame.Input]:
+		if err := r.SetImage(ctx, f); err != nil {
+			return fmt.Errorf("unable to set the image: %w", err)
+		}
+	case ImageRenderer[ImageGeneric]:
+		f.Data().ToImage(p.currentImage)
+		if _, ok := p.ImageRenderer.(RenderNower); !ok {
+			return r.SetImage(ctx, ImageGeneric{Image: p.currentImage})
+		}
+	default:
+		return fmt.Errorf("an image renderer of an unexpected type %T", r)
+	}
 
 	sinceStart := time.Since(p.lastSeekAt)
-	currentExpectedPosition := p.previousVideoPosition + frame.GetDurationAsDuration()
+	currentExpectedPosition := p.previousVideoPosition + f.GetDurationAsDuration()
 	if p.startOffset == nil {
 		p.startOffset = ptr(currentExpectedPosition - sinceStart)
 		logger.Tracef(ctx, "set startOffset to: %v, which is %v - %v", *p.startOffset, currentExpectedPosition, sinceStart)
@@ -225,7 +239,7 @@ func (p *Player) processVideoFrame(
 		logger.Tracef(ctx, "update startOffset to: %v, which is %v - %v", *p.startOffset, currentExpectedPosition, sinceStart)
 		waitIntervalForNextFrame = 0
 	}
-	p.previousVideoPosition = frame.GetPTSAsDuration()
+	p.previousVideoPosition = f.GetPTSAsDuration()
 
 	logger.Tracef(ctx, "sleeping for %v (%v - (%v + %v))", waitIntervalForNextFrame, currentExpectedPosition, sinceStart, *p.startOffset)
 	time.Sleep(waitIntervalForNextFrame)
@@ -237,16 +251,19 @@ func (p *Player) processVideoFrame(
 	return nil
 }
 
-func (p *Player) renderCurrentPicture() error {
-	return p.ImageRenderer.Render()
+func (p *Player[I]) renderCurrentPicture() error {
+	if r, ok := p.ImageRenderer.(RenderNower); ok {
+		return r.RenderNow()
+	}
+	return nil
 }
 
-func (p *Player) processAudioFrame(
+func (p *Player[I]) processAudioFrame(
 	ctx context.Context,
 	frame frame.Input,
-) error {
+) (_err error) {
 	logger.Tracef(ctx, "processAudioFrame")
-	defer logger.Tracef(ctx, "/processAudioFrame")
+	defer func() { logger.Tracef(ctx, "/processAudioFrame: %v", _err) }()
 	if p.AudioRenderer == nil {
 		return nil
 	}
@@ -314,7 +331,7 @@ func (p *Player) processAudioFrame(
 	return nil
 }
 
-func (p *Player) onEnd() {
+func (p *Player[I]) onEnd() {
 	ctx := context.TODO()
 	logger.Debugf(ctx, "onEnd")
 	defer logger.Debugf(ctx, "/onEnd")
@@ -335,30 +352,32 @@ func (p *Player) onEnd() {
 		p.endChan, oldEndChan = make(chan struct{}), p.endChan
 		close(oldEndChan)
 		if p.ImageRenderer != nil {
-			if err := p.ImageRenderer.SetVisible(false); err != nil {
-				logger.Errorf(ctx, "unable to close ImageRenderer: %v", err)
+			if v, ok := p.ImageRenderer.(SetVisibler); ok {
+				if err := v.SetVisible(false); err != nil {
+					logger.Errorf(ctx, "unable to hide the image renderer: %v", err)
+				}
 			}
 		}
 	})
 }
 
-func (p *Player) EndChan(
+func (p *Player[I]) EndChan(
 	ctx context.Context,
 ) (<-chan struct{}, error) {
 	return p.endChan, nil
 }
 
-func (p *Player) IsEnded(
+func (p *Player[I]) IsEnded(
 	ctx context.Context,
 ) (bool, error) {
 	return xsync.DoR1(ctx, &p.locker, p.isEnded), nil
 }
 
-func (p *Player) isEnded() bool {
+func (p *Player[I]) isEnded() bool {
 	return p.currentURL == ""
 }
 
-func (p *Player) GetPosition(
+func (p *Player[I]) GetPosition(
 	ctx context.Context,
 ) (_ret time.Duration, _err error) {
 	logger.Tracef(ctx, "GetPosition")
@@ -379,7 +398,7 @@ func (p *Player) GetPosition(
 	})
 }
 
-func (p *Player) GetLength(
+func (p *Player[I]) GetLength(
 	ctx context.Context,
 ) (_ret time.Duration, _err error) {
 	logger.Tracef(ctx, "GetLength")
@@ -393,7 +412,7 @@ func (p *Player) GetLength(
 	})
 }
 
-func (p *Player) ProcessTitle(
+func (p *Player[I]) ProcessTitle(
 	ctx context.Context,
 ) (string, error) {
 	if titler, ok := p.ImageRenderer.(interface{ Title() string }); ok {
@@ -402,7 +421,7 @@ func (p *Player) ProcessTitle(
 	return "", nil
 }
 
-func (p *Player) GetLink(
+func (p *Player[I]) GetLink(
 	ctx context.Context,
 ) (string, error) {
 	return xsync.DoR2(ctx, &p.locker, func() (string, error) {
@@ -414,14 +433,13 @@ func (p *Player) GetLink(
 	})
 }
 
-func (*Player) GetSpeed(
+func (*Player[I]) GetSpeed(
 	ctx context.Context,
 ) (float64, error) {
-	logger.Errorf(ctx, "GetSpeed is not implemented, yet")
 	return 1, nil
 }
 
-func (*Player) SetSpeed(
+func (*Player[I]) SetSpeed(
 	ctx context.Context,
 	speed float64,
 ) error {
@@ -429,13 +447,13 @@ func (*Player) SetSpeed(
 	return nil
 }
 
-func (*Player) GetPause(
+func (*Player[I]) GetPause(
 	ctx context.Context,
 ) (bool, error) {
 	return false, nil
 }
 
-func (*Player) SetPause(
+func (*Player[I]) SetPause(
 	ctx context.Context,
 	pause bool,
 ) error {
@@ -443,7 +461,7 @@ func (*Player) SetPause(
 	return nil
 }
 
-func (*Player) Seek(
+func (*Player[I]) Seek(
 	ctx context.Context,
 	pos time.Duration,
 	isRelative bool,
@@ -452,46 +470,46 @@ func (*Player) Seek(
 	return fmt.Errorf("not implemented, yet")
 }
 
-func (*Player) GetVideoTracks(
+func (*Player[I]) GetVideoTracks(
 	ctx context.Context,
 ) (types.VideoTracks, error) {
 	return nil, fmt.Errorf("not implemented, yet")
 }
 
-func (*Player) GetAudioTracks(
+func (*Player[I]) GetAudioTracks(
 	ctx context.Context,
 ) (types.AudioTracks, error) {
 	return nil, fmt.Errorf("not implemented, yet")
 }
 
-func (*Player) GetSubtitlesTracks(
+func (*Player[I]) GetSubtitlesTracks(
 	ctx context.Context,
 ) (types.SubtitlesTracks, error) {
 	return nil, fmt.Errorf("not implemented, yet")
 }
 
-func (*Player) SetVideoTrack(
+func (*Player[I]) SetVideoTrack(
 	ctx context.Context,
 	vid int64,
 ) error {
 	return fmt.Errorf("not implemented, yet")
 }
 
-func (*Player) SetAudioTrack(
+func (*Player[I]) SetAudioTrack(
 	ctx context.Context,
 	aid int64,
 ) error {
 	return fmt.Errorf("not implemented, yet")
 }
 
-func (*Player) SetSubtitlesTrack(
+func (*Player[I]) SetSubtitlesTrack(
 	ctx context.Context,
 	sid int64,
 ) error {
 	return fmt.Errorf("not implemented, yet")
 }
 
-func (*Player) Stop(
+func (*Player[I]) Stop(
 	ctx context.Context,
 ) error {
 	panic("not implemented, yet")

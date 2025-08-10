@@ -12,7 +12,7 @@ import (
 
 const SupportedBuiltinLibAV = true
 
-type BuiltinLibAV = builtin.Player
+type BuiltinLibAV = builtin.Player[builtin.ImageGeneric]
 
 func NewBuiltinLibAV(
 	ctx context.Context,

@@ -7,12 +7,27 @@ import (
 	"time"
 
 	"github.com/xaionaro-go/audio/pkg/audio"
+	"github.com/xaionaro-go/avpipeline/frame"
 )
 
-type ImageRenderer interface {
+type ImageGeneric struct {
+	image.Image
+}
+
+type ImageAny interface {
+	ImageGeneric | frame.Input
+}
+
+type ImageRenderer[I ImageAny] interface {
 	io.Closer
-	SetImage(img image.Image) error
-	Render() error
+	SetImage(ctx context.Context, img I) error
+}
+
+type RenderNower interface {
+	RenderNow() error
+}
+
+type SetVisibler interface {
 	SetVisible(bool) error
 }
 

@@ -17,7 +17,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/spf13/pflag v1.0.6
 	github.com/xaionaro-go/audio v0.0.0-20250210102901-abfced9d5ef3
-	github.com/xaionaro-go/avpipeline v0.0.0-20250809004114-8edb93a58cf2
+	github.com/xaionaro-go/avpipeline v0.0.0-20250810004629-07e9d0923d43
 	github.com/xaionaro-go/datacounter v1.0.4
 	github.com/xaionaro-go/logwriter v0.0.0-20250111154941-c3f7a1a2d567
 	github.com/xaionaro-go/observability v0.0.0-20250622130956-24b7017284e4
@@ -58,6 +58,7 @@ require (
 	github.com/huandu/go-tls v1.0.1 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20240223122105-ce5225dcaa49 // indirect
 	github.com/jfreymuth/oggvorbis v1.0.5 // indirect
+	github.com/jfreymuth/pulse v0.1.1 // indirect
 	github.com/jfreymuth/vorbis v1.0.2 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect

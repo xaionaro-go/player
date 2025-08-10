@@ -20,8 +20,11 @@ type WindowRenderer struct {
 	resizeOnce   sync.Once
 }
 
-func (r *WindowRenderer) SetImage(img image.Image) error {
-	r.currentImage = img
+func (r *WindowRenderer) SetImage(
+	ctx context.Context,
+	img ImageGeneric,
+) error {
+	r.currentImage = img.Image
 	r.resizeOnce.Do(func() {
 		bounds := img.Bounds()
 		size := fyne.NewSize(float32(bounds.Dx()), float32(bounds.Dy()))
@@ -38,7 +41,7 @@ func (r *WindowRenderer) SetImage(img image.Image) error {
 	return nil
 }
 
-func (r *WindowRenderer) Render() error {
+func (r *WindowRenderer) RenderNow() error {
 	r.imageRaster.Refresh()
 	return nil
 }
@@ -66,7 +69,7 @@ func NewWindow(
 	ctx context.Context,
 	title string,
 	opts ...types.Option,
-) *Player {
+) *Player[ImageGeneric] {
 	logger.Debugf(ctx, "NewWindow(ctx, '%s', %#+v)", title, opts)
 	cfg := types.Options(opts).Config()
 	r := &WindowRenderer{

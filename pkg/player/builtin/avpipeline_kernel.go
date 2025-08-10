@@ -12,9 +12,9 @@ import (
 	"github.com/xaionaro-go/xsync"
 )
 
-var _ kernel.Abstract = (*Player)(nil)
+var _ kernel.Abstract = (*Player[ImageGeneric])(nil)
 
-func (p *Player) SendInputPacket(
+func (p *Player[I]) SendInputPacket(
 	ctx context.Context,
 	input packet.Input,
 	outputPacketsCh chan<- packet.Output,
@@ -23,7 +23,7 @@ func (p *Player) SendInputPacket(
 	return fmt.Errorf("player expects to receive only decoded frames")
 }
 
-func (p *Player) SendInputFrame(
+func (p *Player[I]) SendInputFrame(
 	ctx context.Context,
 	input frame.Input,
 	outputPacketsCh chan<- packet.Output,
@@ -32,11 +32,11 @@ func (p *Player) SendInputFrame(
 	return p.processFrame(ctx, input)
 }
 
-func (p *Player) String() string {
+func (p *Player[I]) String() string {
 	return "Player"
 }
 
-func (p *Player) Close(ctx context.Context) (_err error) {
+func (p *Player[I]) Close(ctx context.Context) (_err error) {
 	logger.Debugf(ctx, "Close()")
 	defer func() { logger.Debugf(ctx, "/Close(): %v", _err) }()
 
@@ -64,7 +64,7 @@ func (p *Player) Close(ctx context.Context) (_err error) {
 	return errors.Join(errs...)
 }
 
-func (p *Player) CloseChan() <-chan struct{} {
+func (p *Player[I]) CloseChan() <-chan struct{} {
 	ctx := context.TODO()
 	ch, err := p.EndChan(ctx)
 	if err != nil {
@@ -73,7 +73,7 @@ func (p *Player) CloseChan() <-chan struct{} {
 	return ch
 }
 
-func (p *Player) Generate(
+func (p *Player[I]) Generate(
 	ctx context.Context,
 	outputPacketsCh chan<- packet.Output,
 	outputFramesCh chan<- frame.Output,
