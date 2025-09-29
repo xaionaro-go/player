@@ -94,8 +94,7 @@ func (r *ImageRendererV4L2Output) setImage(
 				ctx,
 				packet.BuildInput(
 					p.Packet,
-					p.Stream,
-					p.Source,
+					p.StreamInfo,
 				),
 				closedPacketsCh, closedFramesCh)
 

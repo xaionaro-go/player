@@ -39,7 +39,6 @@ type Player[I ImageAny] struct {
 	locker                xsync.Gorex
 	currentURL            string
 	currentImage          image.Image
-	currentDuration       time.Duration
 	previousVideoPosition time.Duration
 	currentAudioPosition  time.Duration
 	startOffset           *time.Duration
@@ -162,7 +161,7 @@ func (p *Player[I]) processFrame(
 	ctx context.Context,
 	frame frame.Input,
 ) error {
-	logger.Tracef(ctx, "processFrame: pos: %v; dur: %v; pts: %v; time_base: %v", frame.GetPTSAsDuration(), frame.GetStreamDurationAsDuration(), frame.Pts(), frame.GetTimeBase())
+	logger.Tracef(ctx, "processFrame: pos: %v; pts: %v; time_base: %v", frame.GetPTSAsDuration(), frame.Pts(), frame.GetTimeBase())
 	defer func() {
 		logger.Tracef(ctx, "/processFrame; av-desync: %v", p.currentAudioPosition-p.previousVideoPosition)
 	}()
@@ -198,7 +197,6 @@ func (p *Player[I]) processVideoFrame(
 		return nil
 	}
 
-	p.currentDuration = f.GetStreamDurationAsDuration()
 	streamIdx := f.GetStreamIndex()
 
 	if p.videoStreamIndex.CompareAndSwap(math.MaxUint32, uint32(streamIdx)) { // atomics are not really needed because all of this happens while holding p.locker
@@ -408,7 +406,7 @@ func (p *Player[I]) GetLength(
 			return 0, fmt.Errorf("the player is not started or already ended")
 		}
 
-		return p.currentDuration, nil
+		return 0, fmt.Errorf("not implemented, yet")
 	})
 }
 
