@@ -31,9 +31,10 @@ type Player interface {
 
 type PlayerCommon struct {
 	Title         string
-	LowLatency    bool
+	Preset        *Preset
+	AudioBuffer   *time.Duration
 	CacheDuration *time.Duration
-	CacheMaxSize  uint64
+	CacheMaxSize  *uint64
 }
 
 func (p PlayerCommon) ProcessTitle(

@@ -65,7 +65,7 @@ func main() {
 
 	var opts types.Options
 	if *lowLatency {
-		opts = append(opts, types.OptionLowLatency(true))
+		opts = append(opts, types.OptionPreset(types.PresetLowLatency))
 	}
 	if *cacheLength > 0 {
 		opts = append(opts, types.OptionCacheDuration(*cacheLength))

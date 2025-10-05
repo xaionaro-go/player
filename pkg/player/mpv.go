@@ -66,7 +66,8 @@ func (m *Manager) NewMPV(
 	r, err := NewMPV(
 		ctx, title,
 		cfg.PathToMPV,
-		cfg.LowLatency,
+		cfg.Preset,
+		cfg.AudioBuffer,
 		cfg.CacheLength, cfg.CacheMaxSize,
 		vid,
 	)
@@ -83,33 +84,36 @@ func (m *Manager) NewMPV(
 func NewMPV(
 	ctx context.Context,
 	title string,
-	pathToMPV string,
-	lowLatency bool,
+	pathToMPV *string,
+	// TODO: collapse the arguments below into a structure or options
+	preset *types.Preset,
+	audioBuffer *time.Duration,
 	cacheDuration *time.Duration,
-	cacheMaxSize uint64,
+	cacheMaxSize *uint64,
 	videoTrackID int,
 ) (_ret *MPV, _err error) {
 	logger.Debugf(ctx, "NewMPV()")
 	defer func() { logger.Debugf(ctx, "/NewMPV(): %#+v %v", spew.Sdump(_ret), _err) }()
 
-	if pathToMPV == "" {
-		pathToMPV = "mpv"
+	if pathToMPV == nil {
+		pathToMPV = ptr("mpv")
 		switch runtime.GOOS {
 		case "windows":
-			pathToMPV += ".exe"
+			*pathToMPV += ".exe"
 		}
 	}
 
-	execPathToMPV, err := xpath.GetExecPath(pathToMPV, "mpv")
+	execPathToMPV, err := xpath.GetExecPath(*pathToMPV, "mpv")
 	if err != nil {
-		return nil, fmt.Errorf("unable to locate the executable of MPV: '%s': %w", pathToMPV, err)
+		return nil, fmt.Errorf("unable to locate the executable of MPV: '%s': %w", *pathToMPV, err)
 	}
 
 	ctx, cancelFn := context.WithCancel(ctx)
 	p := &MPV{
 		PlayerCommon: PlayerCommon{
 			Title:         title,
-			LowLatency:    lowLatency,
+			Preset:        preset,
+			AudioBuffer:   audioBuffer,
 			CacheDuration: cacheDuration,
 			CacheMaxSize:  cacheMaxSize,
 		},
@@ -166,10 +170,22 @@ func (p *MPV) execMPV(
 			"-ao=sdl",
 		)
 	}
-	if p.LowLatency {
-		args = append(args,
-			"--profile=low-latency",
-		)
+	if p.Preset != nil {
+		var profileName string
+		switch *p.Preset {
+		case types.PresetLowLatency:
+			profileName = "low-latency"
+		default:
+			logger.Warnf(ctx, "unknown preset: '%s'", *p.Preset)
+		}
+		if profileName == "" {
+			args = append(args,
+				fmt.Sprintf("--profile=%s", profileName),
+			)
+		}
+	}
+	if p.AudioBuffer != nil {
+		args = append(args, fmt.Sprintf("--audio-buffer=%v", p.AudioBuffer.Seconds()))
 	}
 	if p.CacheDuration != nil {
 		if *p.CacheDuration == 0 {
@@ -178,9 +194,9 @@ func (p *MPV) execMPV(
 			args = append(args, fmt.Sprintf("--cache-secs=%v", p.CacheDuration.Seconds()))
 		}
 	}
-	if p.CacheMaxSize > 0 {
+	if p.CacheMaxSize != nil {
 		args = append(args,
-			fmt.Sprintf("--demuxer-max-bytes=%d", p.CacheMaxSize),
+			fmt.Sprintf("--demuxer-max-bytes=%d", *p.CacheMaxSize),
 		)
 	}
 	switch observability.LogLevelFilter.GetLevel() {
