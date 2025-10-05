@@ -1,6 +1,10 @@
 package types
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 type Option interface {
 	Apply(cfg *Config)
@@ -18,6 +22,14 @@ func (options Options) Apply(cfg *Config) {
 	for _, option := range options {
 		option.Apply(cfg)
 	}
+}
+
+func (options Options) String() string {
+	var s []string
+	for _, opts := range options {
+		s = append(s, fmt.Sprintf("%#+v", opts))
+	}
+	return strings.Join(s, "|")
 }
 
 type OptionPathToMPV string

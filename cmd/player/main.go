@@ -84,7 +84,7 @@ func main() {
 
 	opts := types.Options{types.OptionPathToMPV(*mpvPath)}
 	if *lowLatency {
-		opts = append(opts, types.OptionPreset(types.PresetLowLatency))
+		opts = append(opts, types.OptionPreset(types.PresetLowestLatency))
 	}
 	if *cacheLength > 0 {
 		opts = append(opts, types.OptionCacheDuration(*cacheLength))

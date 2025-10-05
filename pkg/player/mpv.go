@@ -171,17 +171,19 @@ func (p *MPV) execMPV(
 		)
 	}
 	if p.Preset != nil {
-		var profileName string
 		switch *p.Preset {
+		case types.PresetLowestLatency:
+			args = append(args,
+				"--profile=low-latency",
+			)
 		case types.PresetLowLatency:
-			profileName = "low-latency"
+			args = append(args,
+				"--demuxer-lavf-analyzeduration=0.1",
+				"--demuxer-lavf-probe-info=nostreams",
+				"--demuxer-lavf-o-add=fflags=+nobuffer",
+			)
 		default:
 			logger.Warnf(ctx, "unknown preset: '%s'", *p.Preset)
-		}
-		if profileName == "" {
-			args = append(args,
-				fmt.Sprintf("--profile=%s", profileName),
-			)
 		}
 	}
 	if p.AudioBuffer != nil {

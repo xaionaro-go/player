@@ -5,7 +5,8 @@ import "time"
 type Preset string
 
 const (
-	PresetLowLatency = Preset("low_latency")
+	PresetLowestLatency = Preset("lowest_latency")
+	PresetLowLatency    = Preset("low_latency")
 )
 
 type Config struct {

@@ -46,20 +46,21 @@ func (m *Manager) NewPlayer(
 	backend Backend,
 	opts ...types.Option,
 ) (Player, error) {
-	logger.Debugf(ctx, "NewPlayer: '%s' '%s'", title, backend)
+	opts = m.opts(opts)
+	logger.Debugf(ctx, "NewPlayer: '%s' '%s' (%v)", title, backend, opts)
 	switch backend {
 	case BackendBuiltinLibAV:
-		return m.NewBuiltinLibAV(ctx, title, m.opts(opts)...)
+		return m.NewBuiltinLibAV(ctx, title, opts...)
 	case BackendLibVLC:
-		return m.NewLibVLC(ctx, title, m.opts(opts)...)
+		return m.NewLibVLC(ctx, title, opts...)
 	case BackendMPV:
-		return m.NewMPV(ctx, title, m.opts(opts)...)
+		return m.NewMPV(ctx, title, opts...)
 	default:
 		return nil, fmt.Errorf("unexpected backend type: '%s'", backend)
 	}
 }
 
-func (m *Manager) opts(opts []types.Option) []types.Option {
+func (m *Manager) opts(opts []types.Option) types.Options {
 	result := make([]types.Option, 0, len(m.CommonOptions)+len(opts))
 	result = append(result, m.CommonOptions...)
 	result = append(result, opts...)
