@@ -48,11 +48,15 @@ func (p *Player[I]) Close(ctx context.Context) (_err error) {
 		}
 		ch = p.endChan
 		p.cancelFunc()
-		if err := p.ImageRenderer.Close(); err != nil {
-			errs = append(errs, fmt.Errorf("unable to close the image renderer: %w", err))
+		if p.ImageRenderer != nil {
+			if err := p.ImageRenderer.Close(); err != nil {
+				errs = append(errs, fmt.Errorf("unable to close the image renderer: %w", err))
+			}
 		}
-		if err := p.AudioRenderer.Close(); err != nil {
-			errs = append(errs, fmt.Errorf("unable to close the audio renderer: %w", err))
+		if p.AudioRenderer != nil {
+			if err := p.AudioRenderer.Close(); err != nil {
+				errs = append(errs, fmt.Errorf("unable to close the audio renderer: %w", err))
+			}
 		}
 		return true
 	})
