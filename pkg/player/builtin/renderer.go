@@ -11,6 +11,7 @@ import (
 )
 
 type ImageGeneric struct {
+	frame.Input
 	image.Image
 }
 
@@ -24,7 +25,7 @@ type ImageRenderer[I ImageAny] interface {
 }
 
 type RenderNower interface {
-	RenderNow() error
+	RenderNow(context.Context, frame.Input) error
 }
 
 type SetVisibler interface {

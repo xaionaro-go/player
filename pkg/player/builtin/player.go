@@ -216,9 +216,15 @@ func (p *Player[I]) processVideoFrame(
 			return fmt.Errorf("unable to set the image: %w", err)
 		}
 	case ImageRenderer[ImageGeneric]:
-		f.Data().ToImage(p.currentImage)
+		err := f.Data().ToImage(p.currentImage)
+		if err != nil {
+			return fmt.Errorf("unable to convert the frame into an image: %w", err)
+		}
 		if _, ok := p.ImageRenderer.(RenderNower); !ok {
-			return r.SetImage(ctx, ImageGeneric{Image: p.currentImage})
+			return r.SetImage(ctx, ImageGeneric{
+				Input: f,
+				Image: p.currentImage,
+			})
 		}
 	default:
 		return fmt.Errorf("an image renderer of an unexpected type %T", r)
@@ -242,16 +248,19 @@ func (p *Player[I]) processVideoFrame(
 	logger.Tracef(ctx, "sleeping for %v (%v - (%v + %v))", waitIntervalForNextFrame, currentExpectedPosition, sinceStart, *p.startOffset)
 	time.Sleep(waitIntervalForNextFrame)
 
-	if err := p.renderCurrentPicture(); err != nil {
+	if err := p.renderCurrentPicture(ctx, f); err != nil {
 		return fmt.Errorf("unable to render the picture: %w", err)
 	}
 
 	return nil
 }
 
-func (p *Player[I]) renderCurrentPicture() error {
+func (p *Player[I]) renderCurrentPicture(
+	ctx context.Context,
+	f frame.Input,
+) error {
 	if r, ok := p.ImageRenderer.(RenderNower); ok {
-		return r.RenderNow()
+		return r.RenderNow(ctx, f)
 	}
 	return nil
 }
