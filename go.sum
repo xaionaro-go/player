@@ -99,8 +99,6 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933 h1:r4hxcT6GBIA/j8Ox4OXI5MNgMKfR+9plcAWYi1OnmOg=
-github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933/go.mod h1:RkQWLNITKkXHLP7LXxZSgEq+uFWU25M5qW7qfEhL9Wc=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/ebitengine/oto/v3 v3.3.2 h1:VTWBsKX9eb+dXzaF4jEwQbs4yWIdXukJ0K40KgkpYlg=
@@ -393,6 +391,8 @@ github.com/xaionaro-go/logrustash v0.0.0-20240804141650-d48034780a5f h1:mMrVrYtH
 github.com/xaionaro-go/logrustash v0.0.0-20240804141650-d48034780a5f/go.mod h1:aszOZHoPPSgKwdbJUgonps3MSODqctkNhwQDDwlw0Eg=
 github.com/xaionaro-go/logwriter v0.0.0-20250111154941-c3f7a1a2d567 h1:0b0VfuC0rFdxdBItqtDuQcyxFrwLNnC7PcqZWqzHadw=
 github.com/xaionaro-go/logwriter v0.0.0-20250111154941-c3f7a1a2d567/go.mod h1:chl9gIPqx9bvO9isZwNg4LaWBJelX6zCaAdQUcDU0zE=
+github.com/xaionaro-go/mpvipc v0.0.0-20251019230357-e0f534e5dde4 h1:95ZD7DCoCJstRq6lu5Fi9u0tkZu/fBzv3r9IDpz9qFo=
+github.com/xaionaro-go/mpvipc v0.0.0-20251019230357-e0f534e5dde4/go.mod h1:RkQWLNITKkXHLP7LXxZSgEq+uFWU25M5qW7qfEhL9Wc=
 github.com/xaionaro-go/ndk v0.0.0-20250420195304-361bb98583bf h1:0FaC9qSWDXeKiZbfNI2agR7Vjait42RVsVQJ0AkNE7g=
 github.com/xaionaro-go/ndk v0.0.0-20250420195304-361bb98583bf/go.mod h1:W8O/bfrWU9qp2okQxMGyXvEbtC79wnTtJV2Y7K3oUPQ=
 github.com/xaionaro-go/object v0.0.0-20241026212449-753ce10ec94c h1:2CIIxTRox9auImHyfbfrqSyrvPaWrw5w2Yw5TkOioZw=

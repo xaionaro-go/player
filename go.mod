@@ -6,6 +6,8 @@ toolchain go1.24.7
 
 replace github.com/asticode/go-astiav v0.36.0 => github.com/xaionaro-go/astiav v0.0.0-20250921155049-2374b643f99e
 
+replace github.com/dexterlb/mpvipc => github.com/xaionaro-go/mpvipc v0.0.0-20251019230357-e0f534e5dde4
+
 require (
 	fyne.io/fyne/v2 v2.5.3
 	github.com/AgustinSRG/go-child-process-manager v1.0.1
