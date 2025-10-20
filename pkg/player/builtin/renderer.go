@@ -11,12 +11,18 @@ import (
 )
 
 type ImageGeneric struct {
+	*Player[ImageGeneric]
 	frame.Input
 	image.Image
 }
 
+type ImageUnparsed struct {
+	*Player[ImageUnparsed]
+	frame.Input
+}
+
 type ImageAny interface {
-	ImageGeneric | frame.Input
+	ImageGeneric | ImageUnparsed
 }
 
 type ImageRenderer[I ImageAny] interface {

@@ -220,8 +220,11 @@ func (p *Player[I]) processVideoFrame(
 	}
 
 	switch r := p.ImageRenderer.(type) {
-	case ImageRenderer[frame.Input]:
-		if err := r.SetImage(ctx, f); err != nil {
+	case ImageRenderer[ImageUnparsed]:
+		if err := r.SetImage(ctx, ImageUnparsed{
+			Player: any(p).(*Player[ImageUnparsed]),
+			Input:  frame.Input{},
+		}); err != nil {
 			return fmt.Errorf("unable to set the image: %w", err)
 		}
 	case ImageRenderer[ImageGeneric]:
@@ -231,8 +234,9 @@ func (p *Player[I]) processVideoFrame(
 		}
 		if _, ok := p.ImageRenderer.(RenderNower); !ok {
 			return r.SetImage(ctx, ImageGeneric{
-				Input: f,
-				Image: p.currentImage,
+				Player: any(p).(*Player[ImageGeneric]),
+				Input:  f,
+				Image:  p.currentImage,
 			})
 		}
 	default:

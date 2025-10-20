@@ -23,7 +23,7 @@ type ImageRendererV4L2Output struct {
 	Encoder      *kernel.Encoder[*codec.NaiveEncoderFactory]
 }
 
-var _ ImageRenderer[frame.Input] = (*ImageRendererV4L2Output)(nil)
+var _ ImageRenderer[ImageUnparsed] = (*ImageRendererV4L2Output)(nil)
 
 func NewImageRendererV4L2Output(
 	ctx context.Context,
@@ -65,11 +65,11 @@ func init() {
 
 func (r *ImageRendererV4L2Output) SetImage(
 	ctx context.Context,
-	f frame.Input,
+	f ImageUnparsed,
 ) (_err error) {
 	logger.Tracef(ctx, "SetImage")
 	defer func() { logger.Tracef(ctx, "/SetImage: %v", _err) }()
-	return xsync.DoA2R1(ctx, &r.EncoderMutex, r.setImage, ctx, f)
+	return xsync.DoA2R1(ctx, &r.EncoderMutex, r.setImage, ctx, f.Input)
 }
 
 func (r *ImageRendererV4L2Output) setImage(
