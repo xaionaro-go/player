@@ -43,10 +43,10 @@ func (p *Player[I]) Close(ctx context.Context) (_err error) {
 	var errs []error
 	var ch <-chan struct{}
 	wasRunning := xsync.DoR1(ctx, &p.locker, func() bool {
+		ch = p.closedChan
 		if p.cancelFunc == nil {
 			return false
 		}
-		ch = p.endChan
 		p.cancelFunc()
 		if p.ImageRenderer != nil {
 			if err := p.ImageRenderer.Close(); err != nil {

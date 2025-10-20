@@ -44,6 +44,7 @@ type Player[I ImageAny] struct {
 	startOffset           *time.Duration
 	videoStreamIndex      atomic.Uint32
 	audioStreamIndex      atomic.Uint32
+	closedChan            chan struct{}
 	endChan               chan struct{}
 	cancelFunc            context.CancelFunc
 }
@@ -58,6 +59,7 @@ func New[I ImageAny](
 	p := &Player[I]{
 		ImageRenderer: imageRenderer,
 		AudioRenderer: audioRenderer,
+		closedChan:    make(chan struct{}),
 		endChan:       make(chan struct{}),
 	}
 	p.onEnd()
@@ -153,6 +155,13 @@ func (p *Player[I]) openURL(
 				return fmt.Errorf("unable to make the image renderer visible: %w", err)
 			}
 		}
+	}
+
+	select {
+	case <-p.closedChan:
+		p.closedChan = make(chan struct{})
+	default:
+		panic("is supposed to be impossible")
 	}
 	return nil
 }
@@ -358,6 +367,11 @@ func (p *Player[I]) onEnd() {
 		var oldEndChan chan struct{}
 		p.endChan, oldEndChan = make(chan struct{}), p.endChan
 		close(oldEndChan)
+		select {
+		case <-p.closedChan:
+		default:
+			close(p.closedChan)
+		}
 		if p.ImageRenderer != nil {
 			if v, ok := p.ImageRenderer.(SetVisibler); ok {
 				if err := v.SetVisible(false); err != nil {
