@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"github.com/facebookincubator/go-belt/tool/logger"
 	"github.com/xaionaro-go/audio/pkg/audio"
+	"github.com/xaionaro-go/avpipeline/frame"
 	"github.com/xaionaro-go/player/pkg/player/types"
 )
 
@@ -19,6 +20,9 @@ type WindowRenderer struct {
 	currentImage image.Image
 	resizeOnce   sync.Once
 }
+
+var _ ImageRenderer[ImageGeneric] = (*WindowRenderer)(nil)
+var _ RenderNower = (*WindowRenderer)(nil)
 
 func (r *WindowRenderer) SetImage(
 	ctx context.Context,
@@ -41,7 +45,10 @@ func (r *WindowRenderer) SetImage(
 	return nil
 }
 
-func (r *WindowRenderer) RenderNow() error {
+func (r *WindowRenderer) RenderNow(
+	_ context.Context,
+	_ frame.Input,
+) error {
 	r.imageRaster.Refresh()
 	return nil
 }
