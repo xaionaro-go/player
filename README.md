@@ -33,3 +33,44 @@ go run -tags with_libav ./cmd/player/ --backend builtin_libav MY_MEDIA_FILE_HERE
 
 Expected result:
 ![demo screenshot](./doc/player_screenshot.png "demo screenshot")
+
+# Installing dependencies
+
+## Ubuntu
+
+```sh
+# fyne
+sudo apt install -y libgl-dev libx11-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev libxxf86vm-dev
+
+# audio
+sudo apt install -y libasound2-dev
+
+# libav
+sudo apt install -y libavcodec-dev libavdevice-dev
+
+# libvlc
+sudo apt install -y libvlc-dev
+
+# mpv
+sudo apt install -y mpv
+```
+
+
+## Fedora
+
+```sh
+# fyne
+sudo dnf install -y libglvnd-devel libX11-devel libXrandr-devel libXcursor-devel libXinerama-devel libXi-devel libXxf86vm-devel
+
+# audio
+sudo dnf install -y alsa-lib-devel
+
+# libav
+sudo dnf install -y libavcodec-free-devel libavdevice-free-devel libavfilter-free-devel libavformat-free-devel libavutil-free-devel
+
+# libvlc
+sudo dnf install -y vlc-devel
+
+# mpv
+sudo dnf install -y mpv
+```
