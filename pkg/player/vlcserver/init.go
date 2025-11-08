@@ -69,7 +69,7 @@ func runVLCServer(
 	srv := server.NewServer()
 	err = srv.Serve(listener)
 	if err != nil {
-		return fmt.Errorf("unable to serve: %w")
+		return fmt.Errorf("unable to serve: %w", err)
 	}
 
 	return nil
