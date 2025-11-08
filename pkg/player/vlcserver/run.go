@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	debugRunVLCInTheSameProcess = true
+	debugRunVLCInTheSameProcess = false
 )
 
 type VLC struct {
