@@ -40,13 +40,13 @@ type Decoder struct {
 	currentURL            string
 	currentImage          image.Image
 	previousVideoPosition time.Duration
-	currentAudioPosition  time.Duration
-	startOffset           *time.Duration
+	currentAudioPosition  atomic.Uint64
 	videoStreamIndex      atomic.Uint32
 	audioStreamIndex      atomic.Uint32
 	closedChan            chan struct{}
 	endChan               chan struct{}
 	cancelFunc            context.CancelFunc
+	videoFramesQueue      chan frame.Input
 }
 
 var _ types.Player = (*Decoder)(nil)
@@ -57,11 +57,13 @@ func New(
 	audioRenderer AudioRenderer,
 ) *Decoder {
 	p := &Decoder{
-		ImageRenderer: imageRenderer,
-		AudioRenderer: audioRenderer,
-		closedChan:    make(chan struct{}),
-		endChan:       make(chan struct{}),
+		ImageRenderer:    imageRenderer,
+		AudioRenderer:    audioRenderer,
+		closedChan:       make(chan struct{}),
+		endChan:          make(chan struct{}),
+		videoFramesQueue: make(chan frame.Input, 100),
 	}
+	p.init(ctx)
 	p.onEnd()
 	return p
 }
@@ -70,6 +72,74 @@ func (*Decoder) SetupForStreaming(
 	ctx context.Context,
 ) error {
 	return nil
+}
+
+func (p *Decoder) init(ctx context.Context) {
+	observability.Go(ctx, func(ctx context.Context) {
+		p.videoRenderLoop(ctx)
+	})
+}
+
+func (p *Decoder) videoRenderLoop(
+	ctx context.Context,
+) {
+	logger.Debugf(ctx, "videoRenderLoop")
+	defer logger.Debugf(ctx, "/videoRenderLoop")
+	for {
+		var f frame.Input
+		select {
+		case <-ctx.Done():
+			logger.Debugf(ctx, "videoRenderLoop: context done")
+			return
+		case f = <-p.videoFramesQueue:
+		}
+
+		currentExpectedPosition := p.getCurrentAudioPosition() - BufferSizeAudio
+		curPosition := f.GetPTSAsDuration()
+		waitIntervalForNextFrame := curPosition - currentExpectedPosition
+		p.previousVideoPosition = curPosition
+
+		logger.Tracef(ctx, "sleeping for %v (%v - %v)", waitIntervalForNextFrame, curPosition, currentExpectedPosition)
+		if waitIntervalForNextFrame > 0 {
+			time.Sleep(waitIntervalForNextFrame)
+		}
+
+		switch r := p.ImageRenderer.(type) {
+		case AVFrameRenderer:
+			if err := r.SetAVFrame(ctx, ImageUnparsed{
+				Decoder: p,
+				Input:   f,
+			}); err != nil {
+				logger.Errorf(ctx, "unable to set the AV frame: %v", err)
+				continue
+			}
+		case ImageRenderer:
+			err := f.Data().ToImage(p.currentImage)
+			if err != nil {
+				logger.Errorf(ctx, "unable to convert the frame into an image: %v", err)
+				continue
+			}
+			if _, ok := p.ImageRenderer.(RenderImageNower); !ok {
+				err := r.SetImage(ctx, ImageGeneric{
+					Decoder: p,
+					Input:   f,
+					Image:   p.currentImage,
+				})
+				if err != nil {
+					logger.Errorf(ctx, "unable to set the image: %v", err)
+					continue
+				}
+			}
+		default:
+			logger.Errorf(ctx, "an image renderer of an unexpected type %T", r)
+			continue
+		}
+
+		if err := p.renderCurrentPicture(ctx, f); err != nil {
+			logger.Errorf(ctx, "unable to render the picture: %v", err)
+			continue
+		}
+	}
 }
 
 func (p *Decoder) OpenURL(
@@ -166,13 +236,17 @@ func (p *Decoder) openURL(
 	return nil
 }
 
+func (p *Decoder) getCurrentAudioPosition() time.Duration {
+	return time.Duration(p.currentAudioPosition.Load())
+}
+
 func (p *Decoder) processFrame(
 	ctx context.Context,
 	frame frame.Input,
 ) error {
 	logger.Tracef(ctx, "processFrame: pos: %v; pts: %v; time_base: %v", frame.GetPTSAsDuration(), frame.Pts(), frame.GetTimeBase())
 	defer func() {
-		logger.Tracef(ctx, "/processFrame; av-desync: %v", p.currentAudioPosition-p.previousVideoPosition)
+		logger.Tracef(ctx, "/processFrame; av-desync: %v", p.getCurrentAudioPosition()-BufferSizeAudio-p.previousVideoPosition)
 	}()
 	return xsync.DoR1(ctx, &p.locker, func() error {
 		switch frame.GetMediaType() {
@@ -219,52 +293,7 @@ func (p *Decoder) processVideoFrame(
 		}
 	}
 
-	switch r := p.ImageRenderer.(type) {
-	case AVFrameRenderer:
-		if err := r.SetAVFrame(ctx, ImageUnparsed{
-			Decoder: p,
-			Input:   frame.Input{},
-		}); err != nil {
-			return fmt.Errorf("unable to set the image: %w", err)
-		}
-	case ImageRenderer:
-		err := f.Data().ToImage(p.currentImage)
-		if err != nil {
-			return fmt.Errorf("unable to convert the frame into an image: %w", err)
-		}
-		if _, ok := p.ImageRenderer.(RenderImageNower); !ok {
-			return r.SetImage(ctx, ImageGeneric{
-				Decoder: p,
-				Input:   f,
-				Image:   p.currentImage,
-			})
-		}
-	default:
-		return fmt.Errorf("an image renderer of an unexpected type %T", r)
-	}
-
-	sinceStart := time.Since(p.lastSeekAt)
-	currentExpectedPosition := p.previousVideoPosition + f.GetDurationAsDuration()
-	if p.startOffset == nil {
-		p.startOffset = ptr(currentExpectedPosition - sinceStart)
-		logger.Tracef(ctx, "set startOffset to: %v, which is %v - %v", *p.startOffset, currentExpectedPosition, sinceStart)
-	}
-	curPosition := sinceStart + *p.startOffset
-	waitIntervalForNextFrame := currentExpectedPosition - curPosition
-	if abs(waitIntervalForNextFrame) > time.Minute {
-		p.startOffset = ptr(currentExpectedPosition - sinceStart)
-		logger.Tracef(ctx, "update startOffset to: %v, which is %v - %v", *p.startOffset, currentExpectedPosition, sinceStart)
-		waitIntervalForNextFrame = 0
-	}
-	p.previousVideoPosition = f.GetPTSAsDuration()
-
-	logger.Tracef(ctx, "sleeping for %v (%v - (%v + %v))", waitIntervalForNextFrame, currentExpectedPosition, sinceStart, *p.startOffset)
-	time.Sleep(waitIntervalForNextFrame)
-
-	if err := p.renderCurrentPicture(ctx, f); err != nil {
-		return fmt.Errorf("unable to render the picture: %w", err)
-	}
-
+	p.videoFramesQueue <- f
 	return nil
 }
 
@@ -290,7 +319,7 @@ func (p *Decoder) processAudioFrame(
 		return nil
 	}
 
-	p.currentAudioPosition = frame.GetPTSAsDuration()
+	p.currentAudioPosition.Store(uint64(frame.GetPTSAsDuration()))
 	streamIdx := frame.GetStreamIndex()
 
 	if p.audioStreamIndex.CompareAndSwap(math.MaxUint32, uint32(streamIdx)) { // atomics are not really needed because all of this happens while holding p.locker
@@ -413,11 +442,12 @@ func (p *Decoder) GetPosition(
 		if p.isEnded() {
 			return 0, fmt.Errorf("the player is not started or already ended")
 		}
+		currentAudioPosition := p.getCurrentAudioPosition()
 		switch {
-		case p.previousVideoPosition != 0 && p.currentAudioPosition != 0:
-			return (p.previousVideoPosition + p.currentAudioPosition) / 2, nil
-		case p.currentAudioPosition != 0:
-			return p.currentAudioPosition, nil
+		case p.previousVideoPosition != 0 && currentAudioPosition != 0:
+			return (p.previousVideoPosition + currentAudioPosition) / 2, nil
+		case currentAudioPosition != 0:
+			return currentAudioPosition, nil
 		case p.previousVideoPosition != 0:
 			return p.previousVideoPosition, nil
 		}
