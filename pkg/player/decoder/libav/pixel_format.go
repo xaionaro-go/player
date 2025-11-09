@@ -1,4 +1,4 @@
-package builtin
+package libav
 
 import (
 	"context"
@@ -8,24 +8,25 @@ import (
 	"github.com/xaionaro-go/avpipeline/frame"
 )
 
-func (p *Player[I]) initImageFor(
+func (p *Decoder) initImageFor(
 	ctx context.Context,
 	frame frame.Input,
 ) (_err error) {
 	logger.Debugf(ctx, "initImageFor")
 	defer func() { logger.Debugf(ctx, "/initImageFor: %v", _err) }()
 
-	r, ok := p.ImageRenderer.(ImageRenderer[ImageGeneric])
-	if !ok {
+	if _, ok := p.ImageRenderer.(AVFrameRenderer); ok {
+		// no need to decode frames
 		return nil
 	}
+
 	var err error
 	p.currentImage, err = frame.Data().GuessImageFormat()
 	if err != nil {
 		return fmt.Errorf("unable to guess the image format: %w", err)
 	}
 
-	err = r.SetImage(ctx, ImageGeneric{
+	err = p.ImageRenderer.SetImage(ctx, ImageGeneric{
 		Image: p.currentImage,
 		Input: frame,
 	})

@@ -1,4 +1,4 @@
-package builtin
+package libav
 
 import (
 	"context"
@@ -30,8 +30,8 @@ const (
 	BufferSizeAudio = 100 * time.Millisecond
 )
 
-type Player[I ImageAny] struct {
-	ImageRenderer[I]
+type Decoder struct {
+	ImageRenderer
 	AudioRenderer
 	lastSeekAt            time.Time
 	audioWriter           io.WriteCloser
@@ -49,14 +49,14 @@ type Player[I ImageAny] struct {
 	cancelFunc            context.CancelFunc
 }
 
-var _ types.Player = (*Player[ImageGeneric])(nil)
+var _ types.Player = (*Decoder)(nil)
 
-func New[I ImageAny](
+func New(
 	ctx context.Context,
-	imageRenderer ImageRenderer[I],
+	imageRenderer ImageRenderer,
 	audioRenderer AudioRenderer,
-) *Player[I] {
-	p := &Player[I]{
+) *Decoder {
+	p := &Decoder{
 		ImageRenderer: imageRenderer,
 		AudioRenderer: audioRenderer,
 		closedChan:    make(chan struct{}),
@@ -66,13 +66,13 @@ func New[I ImageAny](
 	return p
 }
 
-func (*Player[I]) SetupForStreaming(
+func (*Decoder) SetupForStreaming(
 	ctx context.Context,
 ) error {
 	return nil
 }
 
-func (p *Player[I]) OpenURL(
+func (p *Decoder) OpenURL(
 	ctx context.Context,
 	link string,
 ) (_err error) {
@@ -81,7 +81,7 @@ func (p *Player[I]) OpenURL(
 	return xsync.DoA2R1(ctx, &p.locker, p.openURL, ctx, link)
 }
 
-func (p *Player[I]) openURL(
+func (p *Decoder) openURL(
 	ctx context.Context,
 	link string,
 ) error {
@@ -166,7 +166,7 @@ func (p *Player[I]) openURL(
 	return nil
 }
 
-func (p *Player[I]) processFrame(
+func (p *Decoder) processFrame(
 	ctx context.Context,
 	frame frame.Input,
 ) error {
@@ -187,7 +187,7 @@ func (p *Player[I]) processFrame(
 	})
 }
 
-func (p *Player[I]) onSeek(
+func (p *Decoder) onSeek(
 	ctx context.Context,
 ) {
 	logger.Tracef(ctx, "onSeek")
@@ -196,7 +196,7 @@ func (p *Player[I]) onSeek(
 	p.lastSeekAt = time.Now()
 }
 
-func (p *Player[I]) processVideoFrame(
+func (p *Decoder) processVideoFrame(
 	ctx context.Context,
 	f frame.Input,
 ) error {
@@ -220,23 +220,23 @@ func (p *Player[I]) processVideoFrame(
 	}
 
 	switch r := p.ImageRenderer.(type) {
-	case ImageRenderer[ImageUnparsed]:
-		if err := r.SetImage(ctx, ImageUnparsed{
-			Player: any(p).(*Player[ImageUnparsed]),
-			Input:  frame.Input{},
+	case AVFrameRenderer:
+		if err := r.SetAVFrame(ctx, ImageUnparsed{
+			Decoder: p,
+			Input:   frame.Input{},
 		}); err != nil {
 			return fmt.Errorf("unable to set the image: %w", err)
 		}
-	case ImageRenderer[ImageGeneric]:
+	case ImageRenderer:
 		err := f.Data().ToImage(p.currentImage)
 		if err != nil {
 			return fmt.Errorf("unable to convert the frame into an image: %w", err)
 		}
-		if _, ok := p.ImageRenderer.(RenderNower); !ok {
+		if _, ok := p.ImageRenderer.(RenderImageNower); !ok {
 			return r.SetImage(ctx, ImageGeneric{
-				Player: any(p).(*Player[ImageGeneric]),
-				Input:  f,
-				Image:  p.currentImage,
+				Decoder: p,
+				Input:   f,
+				Image:   p.currentImage,
 			})
 		}
 	default:
@@ -268,17 +268,19 @@ func (p *Player[I]) processVideoFrame(
 	return nil
 }
 
-func (p *Player[I]) renderCurrentPicture(
+func (p *Decoder) renderCurrentPicture(
 	ctx context.Context,
-	f frame.Input,
-) error {
-	if r, ok := p.ImageRenderer.(RenderNower); ok {
-		return r.RenderNow(ctx, f)
+	_ frame.Input,
+) (_err error) {
+	logger.Tracef(ctx, "renderCurrentPicture")
+	defer func() { logger.Tracef(ctx, "/renderCurrentPicture: %v", _err) }()
+	if r, ok := p.ImageRenderer.(RenderImageNower); ok {
+		return r.RenderImageNow(ctx)
 	}
 	return nil
 }
 
-func (p *Player[I]) processAudioFrame(
+func (p *Decoder) processAudioFrame(
 	ctx context.Context,
 	frame frame.Input,
 ) (_err error) {
@@ -351,7 +353,7 @@ func (p *Player[I]) processAudioFrame(
 	return nil
 }
 
-func (p *Player[I]) onEnd() {
+func (p *Decoder) onEnd() {
 	ctx := context.TODO()
 	logger.Debugf(ctx, "onEnd")
 	defer logger.Debugf(ctx, "/onEnd")
@@ -386,23 +388,23 @@ func (p *Player[I]) onEnd() {
 	})
 }
 
-func (p *Player[I]) EndChan(
+func (p *Decoder) EndChan(
 	ctx context.Context,
 ) (<-chan struct{}, error) {
 	return p.endChan, nil
 }
 
-func (p *Player[I]) IsEnded(
+func (p *Decoder) IsEnded(
 	ctx context.Context,
 ) (bool, error) {
 	return xsync.DoR1(ctx, &p.locker, p.isEnded), nil
 }
 
-func (p *Player[I]) isEnded() bool {
+func (p *Decoder) isEnded() bool {
 	return p.currentURL == ""
 }
 
-func (p *Player[I]) GetPosition(
+func (p *Decoder) GetPosition(
 	ctx context.Context,
 ) (_ret time.Duration, _err error) {
 	logger.Tracef(ctx, "GetPosition")
@@ -423,7 +425,7 @@ func (p *Player[I]) GetPosition(
 	})
 }
 
-func (p *Player[I]) GetLength(
+func (p *Decoder) GetLength(
 	ctx context.Context,
 ) (_ret time.Duration, _err error) {
 	logger.Tracef(ctx, "GetLength")
@@ -437,7 +439,7 @@ func (p *Player[I]) GetLength(
 	})
 }
 
-func (p *Player[I]) ProcessTitle(
+func (p *Decoder) ProcessTitle(
 	ctx context.Context,
 ) (string, error) {
 	if titler, ok := p.ImageRenderer.(interface{ Title() string }); ok {
@@ -446,7 +448,7 @@ func (p *Player[I]) ProcessTitle(
 	return "", nil
 }
 
-func (p *Player[I]) GetLink(
+func (p *Decoder) GetLink(
 	ctx context.Context,
 ) (string, error) {
 	return xsync.DoR2(ctx, &p.locker, func() (string, error) {
@@ -458,13 +460,13 @@ func (p *Player[I]) GetLink(
 	})
 }
 
-func (*Player[I]) GetSpeed(
+func (*Decoder) GetSpeed(
 	ctx context.Context,
 ) (float64, error) {
 	return 1, nil
 }
 
-func (*Player[I]) SetSpeed(
+func (*Decoder) SetSpeed(
 	ctx context.Context,
 	speed float64,
 ) error {
@@ -472,13 +474,13 @@ func (*Player[I]) SetSpeed(
 	return nil
 }
 
-func (*Player[I]) GetPause(
+func (*Decoder) GetPause(
 	ctx context.Context,
 ) (bool, error) {
 	return false, nil
 }
 
-func (*Player[I]) SetPause(
+func (*Decoder) SetPause(
 	ctx context.Context,
 	pause bool,
 ) error {
@@ -486,7 +488,7 @@ func (*Player[I]) SetPause(
 	return nil
 }
 
-func (*Player[I]) Seek(
+func (*Decoder) Seek(
 	ctx context.Context,
 	pos time.Duration,
 	isRelative bool,
@@ -495,46 +497,46 @@ func (*Player[I]) Seek(
 	return fmt.Errorf("not implemented, yet")
 }
 
-func (*Player[I]) GetVideoTracks(
+func (*Decoder) GetVideoTracks(
 	ctx context.Context,
 ) (types.VideoTracks, error) {
 	return nil, fmt.Errorf("not implemented, yet")
 }
 
-func (*Player[I]) GetAudioTracks(
+func (*Decoder) GetAudioTracks(
 	ctx context.Context,
 ) (types.AudioTracks, error) {
 	return nil, fmt.Errorf("not implemented, yet")
 }
 
-func (*Player[I]) GetSubtitlesTracks(
+func (*Decoder) GetSubtitlesTracks(
 	ctx context.Context,
 ) (types.SubtitlesTracks, error) {
 	return nil, fmt.Errorf("not implemented, yet")
 }
 
-func (*Player[I]) SetVideoTrack(
+func (*Decoder) SetVideoTrack(
 	ctx context.Context,
 	vid int64,
 ) error {
 	return fmt.Errorf("not implemented, yet")
 }
 
-func (*Player[I]) SetAudioTrack(
+func (*Decoder) SetAudioTrack(
 	ctx context.Context,
 	aid int64,
 ) error {
 	return fmt.Errorf("not implemented, yet")
 }
 
-func (*Player[I]) SetSubtitlesTrack(
+func (*Decoder) SetSubtitlesTrack(
 	ctx context.Context,
 	sid int64,
 ) error {
 	return fmt.Errorf("not implemented, yet")
 }
 
-func (*Player[I]) Stop(
+func (*Decoder) Stop(
 	ctx context.Context,
 ) error {
 	panic("not implemented, yet")

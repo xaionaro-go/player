@@ -7,7 +7,7 @@ This is a package that allows to play media files/stream in Go. See demo in [`./
 A minimal example to play a media file/stream would be:
 ```go
     m := player.NewManager(types.OptionPathToMPV(*mpvPath))
-    p, err := m.NewPlayer(ctx, "player demonstration", player.BackendBuiltinLibAV) // available values: player.BackendLibVLC, player.BackendMPV, player.BackendBuiltinLibAV
+    p, err := m.NewPlayer(ctx, "player demonstration", player.BackendLibAVFyne) // available values: player.BackendLibVLC, player.BackendMPV, player.BackendLibAVFyne and others
     if err != nil {
         return fmt.Errorf("unable to open a media player: %w", err)
     }
@@ -19,7 +19,7 @@ A minimal example to play a media file/stream would be:
 ```
 
 * To have the support of `BackendLibVLC` one must build with tag `with_libvlc`.
-* To have the support of `BackendBuiltinLibAV` one must build with tag `with_libav`.
+* To have the support of `BackendLibAVFyne` one must build with tags `with_libav,with_fyne`.
 
 An example how to run the demo:
 ```sh
@@ -28,7 +28,7 @@ go run -tags with_libvlc ./cmd/player/ --backend libvlc MY_MEDIA_FILE_HERE
 
 Or:
 ```sh
-go run -tags with_libav ./cmd/player/ --backend builtin_libav MY_MEDIA_FILE_HERE
+go run -tags with_libav,with_fyne ./cmd/player/ --backend libav_fyne MY_MEDIA_FILE_HERE
 ```
 
 Expected result:

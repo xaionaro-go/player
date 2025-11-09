@@ -1,7 +1,7 @@
 //go:build !android
 // +build !android
 
-package builtin
+package libav
 
 import (
 	"github.com/asticode/go-astiav"

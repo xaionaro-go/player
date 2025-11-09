@@ -24,14 +24,20 @@ func NewManager(opts ...types.Option) *Manager {
 
 func SupportedBackends() []Backend {
 	var result []Backend
+	if SupportedGStreamerEbiten {
+		result = append(result, BackendGStreamerEbiten)
+	}
 	if SupportedLibVLC {
 		result = append(result, BackendLibVLC)
 	}
 	if SupportedMPV {
 		result = append(result, BackendMPV)
 	}
-	if SupportedBuiltinLibAV {
-		result = append(result, BackendBuiltinLibAV)
+	if SupportedLibAVEbiten {
+		result = append(result, BackendLibAVEbiten)
+	}
+	if SupportedLibAVFyne {
+		result = append(result, BackendLibAVFyne)
 	}
 	return result
 }
@@ -49,10 +55,16 @@ func (m *Manager) NewPlayer(
 	opts = m.opts(opts)
 	logger.Debugf(ctx, "NewPlayer: '%s' '%s' (%v)", title, backend, opts)
 	switch backend {
-	case BackendBuiltinLibAV:
-		return m.NewBuiltinLibAV(ctx, title, opts...)
+	case BackendLibAVFyne:
+		return m.NewLibAVFyne(ctx, title, opts...)
+	case BackendLibAVEbiten:
+		return m.NewLibAVEbiten(ctx, title, opts...)
 	case BackendLibVLC:
 		return m.NewLibVLC(ctx, title, opts...)
+	case BackendGStreamerFyne:
+		return nil, fmt.Errorf("not implemented")
+	case BackendGStreamerEbiten:
+		return m.NewGStreamerEbiten(ctx, title, opts...)
 	case BackendMPV:
 		return m.NewMPV(ctx, title, opts...)
 	default:

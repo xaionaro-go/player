@@ -1,4 +1,4 @@
-package builtin
+package libavv4l2
 
 import (
 	"context"
@@ -12,6 +12,8 @@ import (
 	"github.com/xaionaro-go/avpipeline/packet"
 	"github.com/xaionaro-go/avpipeline/types"
 	"github.com/xaionaro-go/observability"
+	"github.com/xaionaro-go/player/pkg/player/decoder/libav"
+	"github.com/xaionaro-go/player/pkg/player/imagerenderer"
 	"github.com/xaionaro-go/secret"
 	"github.com/xaionaro-go/xsync"
 )
@@ -23,7 +25,7 @@ type ImageRendererV4L2Output struct {
 	Encoder      *kernel.Encoder[*codec.NaiveEncoderFactory]
 }
 
-var _ ImageRenderer[ImageUnparsed] = (*ImageRendererV4L2Output)(nil)
+var _ libav.AVFrameRenderer = (*ImageRendererV4L2Output)(nil)
 
 func NewImageRendererV4L2Output(
 	ctx context.Context,
@@ -65,10 +67,17 @@ func init() {
 
 func (r *ImageRendererV4L2Output) SetImage(
 	ctx context.Context,
-	f ImageUnparsed,
+	img imagerenderer.ImageGetter,
 ) (_err error) {
-	logger.Tracef(ctx, "SetImage")
-	defer func() { logger.Tracef(ctx, "/SetImage: %v", _err) }()
+	return fmt.Errorf("ImageRendererV4L2Output only supports libav as the decoder (only SetAVFrame is supported, not SetImage)")
+}
+
+func (r *ImageRendererV4L2Output) SetAVFrame(
+	ctx context.Context,
+	f libav.ImageUnparsed,
+) (_err error) {
+	logger.Tracef(ctx, "SetAVFrame")
+	defer func() { logger.Tracef(ctx, "/SetAVFrame: %v", _err) }()
 	return xsync.DoA2R1(ctx, &r.EncoderMutex, r.setImage, ctx, f.Input)
 }
 

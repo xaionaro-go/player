@@ -1,5 +1,5 @@
-//go:build !with_libav
-// +build !with_libav
+//go:build !with_libav || !with_ebiten
+// +build !with_libav !with_ebiten
 
 package player
 
@@ -10,9 +10,9 @@ import (
 	"github.com/xaionaro-go/player/pkg/player/types"
 )
 
-const SupportedBuiltinLibAV = false
+const SupportedLibAVEbiten = false
 
-func NewBuiltinLibAV(
+func NewLibAVEbiten(
 	ctx context.Context,
 	title string,
 	opts ...types.Option,
@@ -20,10 +20,10 @@ func NewBuiltinLibAV(
 	return nil, fmt.Errorf("not supported, yet")
 }
 
-func (m *Manager) NewBuiltinLibAV(
+func (m *Manager) NewLibAVEbiten(
 	ctx context.Context,
 	title string,
 	opts ...types.Option,
 ) (Player, error) {
-	return NewBuiltinLibAV(ctx, title, opts...)
+	return NewLibAVEbiten(ctx, title, opts...)
 }

@@ -3,8 +3,11 @@ package types
 type Backend string
 
 const (
-	BackendUndefined    = ""
-	BackendLibVLC       = "libvlc"
-	BackendMPV          = "mpv"
-	BackendBuiltinLibAV = "builtin_libav"
+	BackendUndefined       = ""
+	BackendLibVLC          = "libvlc"
+	BackendMPV             = "mpv"
+	BackendGStreamerEbiten = "gstreamer_ebiten"
+	BackendGStreamerFyne   = "gstreamer_fyne"
+	BackendLibAVEbiten     = "libav_ebiten"
+	BackendLibAVFyne       = "libav_fyne"
 )
