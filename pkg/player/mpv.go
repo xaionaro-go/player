@@ -2,6 +2,7 @@ package player
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -307,13 +308,29 @@ func (p *MPV) execMPV(
 	return nil
 }
 
+func (p *MPV) SetCachePause(
+	ctx context.Context,
+	pause bool,
+) error {
+	return p.mpvSet(ctx, "cache-pause", pause)
+}
+
 func (p *MPV) SetupForStreaming(
 	ctx context.Context,
 ) (_err error) {
 	logger.Debugf(ctx, "SetupForStreaming()")
 	defer func() { logger.Debugf(ctx, "/SetupForStreaming(): %v", _err) }()
+	var errs []error
 
-	return p.SetDisplayScale(ctx, 1)
+	if err := p.SetCachePause(ctx, false); err != nil {
+		errs = append(errs, fmt.Errorf("unable to set cache pause to 'false': %w", err))
+	}
+
+	if err := p.SetDisplayScale(ctx, 1); err != nil {
+		errs = append(errs, fmt.Errorf("unable to set display scale to 1x: %w", err))
+	}
+
+	return errors.Join(errs...)
 }
 
 func (p *MPV) OpenURL(
