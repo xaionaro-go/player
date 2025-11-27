@@ -530,6 +530,17 @@ func (p *MPV) GetPosition(
 	return time.Duration(ts * float64(time.Second)), nil
 }
 
+func (p *MPV) GetAudioPosition(
+	ctx context.Context,
+) (time.Duration, error) {
+	ts, err := p.getFloat64(ctx, "audio-pts")
+	if err != nil {
+		return 0, err
+	}
+
+	return time.Duration(ts * float64(time.Second)), nil
+}
+
 func (p *MPV) GetLength(
 	ctx context.Context,
 ) (time.Duration, error) {

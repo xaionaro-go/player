@@ -162,19 +162,17 @@ func (srv *GRPCServer) EndChan(
 		return err
 	}
 
-	for {
-		ch, err := srv.VLC.EndChan(ctx)
-		if err != nil {
-			return fmt.Errorf("unable to get the EndChan: %w", err)
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ch:
-		}
-
-		return server.Send(&player_grpc.EndChanReply{})
+	ch, err := srv.VLC.EndChan(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to get the EndChan: %w", err)
 	}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-ch:
+	}
+
+	return server.Send(&player_grpc.EndChanReply{})
 }
 
 func (srv *GRPCServer) IsEnded(
@@ -205,6 +203,22 @@ func (srv *GRPCServer) GetPosition(
 		return nil, fmt.Errorf("unable to get the position: %w", err)
 	}
 	return &player_grpc.GetPositionReply{
+		PositionSecs: pos.Seconds(),
+	}, nil
+}
+
+func (srv *GRPCServer) GetAudioPosition(
+	ctx context.Context,
+	req *player_grpc.GetAudioPositionRequest,
+) (*player_grpc.GetAudioPositionReply, error) {
+	if err := srv.isInited(); err != nil {
+		return nil, err
+	}
+	pos, err := srv.VLC.GetAudioPosition(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the audio position: %w", err)
+	}
+	return &player_grpc.GetAudioPositionReply{
 		PositionSecs: pos.Seconds(),
 	}, nil
 }

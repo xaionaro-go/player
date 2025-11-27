@@ -62,6 +62,12 @@ func (p *LibVLC) GetPosition(
 	panic("compiled without LibVLC support")
 }
 
+func (p *LibVLC) GetAudioPosition(
+	ctx context.Context,
+) (time.Duration, error) {
+	panic("compiled without LibVLC support")
+}
+
 func (p *LibVLC) GetLength(
 	ctx context.Context,
 ) (time.Duration, error) {

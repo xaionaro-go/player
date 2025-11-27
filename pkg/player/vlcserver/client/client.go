@@ -195,6 +195,23 @@ func (c *Client) GetPosition(
 	}
 	return time.Duration(resp.GetPositionSecs() * float64(time.Second)), nil
 }
+
+func (c *Client) GetAudioPosition(
+	ctx context.Context,
+) (time.Duration, error) {
+	client, conn, err := c.grpcClient()
+	if err != nil {
+		return 0, err
+	}
+	defer conn.Close()
+
+	resp, err := client.GetAudioPosition(ctx, &player_grpc.GetAudioPositionRequest{})
+	if err != nil {
+		return 0, fmt.Errorf("query error: %w", err)
+	}
+	return time.Duration(resp.GetPositionSecs() * float64(time.Second)), nil
+}
+
 func (c *Client) GetLength(
 	ctx context.Context,
 ) (time.Duration, error) {

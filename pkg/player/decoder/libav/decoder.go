@@ -193,8 +193,8 @@ func (p *Decoder) openURL(
 		p,
 		processor.DefaultOptionsRecoder()...,
 	)
-	inputNode.AddPushPacketsTo(decoderNode)
-	decoderNode.AddPushFramesTo(playerNode)
+	inputNode.AddPushPacketsTo(ctx, decoderNode)
+	decoderNode.AddPushFramesTo(ctx, playerNode)
 
 	p.onSeek(ctx)
 
@@ -453,6 +453,14 @@ func (p *Decoder) GetPosition(
 		}
 		return 0, nil
 	})
+}
+
+func (p *Decoder) GetAudioPosition(
+	ctx context.Context,
+) (_ret time.Duration, _err error) {
+	logger.Tracef(ctx, "GetAudioPosition")
+	defer func() { logger.Tracef(ctx, "/GetAudioPosition: %v %v", _ret, _err) }()
+	return p.GetPosition(ctx)
 }
 
 func (p *Decoder) GetLength(

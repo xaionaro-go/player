@@ -9,10 +9,15 @@ import (
 	"github.com/xaionaro-go/avpipeline/frame"
 	"github.com/xaionaro-go/avpipeline/kernel"
 	"github.com/xaionaro-go/avpipeline/packet"
+	avptypes "github.com/xaionaro-go/avpipeline/types"
 	"github.com/xaionaro-go/xsync"
 )
 
 var _ kernel.Abstract = (*Decoder)(nil)
+
+func (p *Decoder) GetObjectID() avptypes.ObjectID {
+	return avptypes.GetObjectID(p)
+}
 
 func (p *Decoder) SendInputPacket(
 	ctx context.Context,

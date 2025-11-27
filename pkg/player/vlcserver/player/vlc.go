@@ -149,6 +149,12 @@ func (p *VLC) GetPosition(
 	return time.Duration(ts) * time.Millisecond, nil
 }
 
+func (p *VLC) GetAudioPosition(
+	ctx context.Context,
+) (time.Duration, error) {
+	return p.GetPosition(ctx)
+}
+
 func (p *VLC) GetLength(
 	ctx context.Context,
 ) (time.Duration, error) {

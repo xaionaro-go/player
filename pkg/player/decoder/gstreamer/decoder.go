@@ -239,6 +239,10 @@ func (d *Decoder) GetPosition(ctx context.Context) (time.Duration, error) {
 	return time.Duration(pos) * time.Nanosecond, nil
 }
 
+func (d *Decoder) GetAudioPosition(ctx context.Context) (time.Duration, error) {
+	return d.GetPosition(ctx)
+}
+
 func (d *Decoder) GetLength(ctx context.Context) (time.Duration, error) {
 	ok, dur := d.Pipeline.QueryDuration(gst.FormatTime)
 	if !ok {

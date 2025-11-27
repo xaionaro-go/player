@@ -10,6 +10,7 @@ service Player {
 	rpc EndChan(EndChanRequest) returns (stream EndChanReply) {}
 	rpc IsEnded(IsEndedRequest) returns (IsEndedReply) {}
 	rpc GetPosition(GetPositionRequest) returns (GetPositionReply) {}
+	rpc GetAudioPosition(GetAudioPositionRequest) returns (GetAudioPositionReply) {}
 	rpc GetLength(GetLengthRequest) returns (GetLengthReply) {}
 	rpc GetSpeed(GetSpeedRequest) returns (GetSpeedReply) {}
 	rpc SetSpeed(SetSpeedRequest) returns (SetSpeedReply) {}
@@ -62,6 +63,10 @@ message IsEndedReply {
 }
 message GetPositionRequest {}
 message GetPositionReply {
+	double positionSecs = 1;
+}
+message GetAudioPositionRequest {}
+message GetAudioPositionReply {
 	double positionSecs = 1;
 }
 message GetLengthRequest {}

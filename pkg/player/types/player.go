@@ -12,6 +12,7 @@ type Player interface {
 	EndChan(ctx context.Context) (<-chan struct{}, error)
 	IsEnded(ctx context.Context) (bool, error)
 	GetPosition(ctx context.Context) (time.Duration, error)
+	GetAudioPosition(ctx context.Context) (time.Duration, error)
 	GetLength(ctx context.Context) (time.Duration, error)
 	GetSpeed(ctx context.Context) (float64, error)
 	SetSpeed(ctx context.Context, speed float64) error

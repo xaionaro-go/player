@@ -62,6 +62,12 @@ func (p *GStreamerEbiten) GetPosition(
 	panic("compiled without GStreamerEbiten support")
 }
 
+func (p *GStreamerEbiten) GetAudioPosition(
+	ctx context.Context,
+) (time.Duration, error) {
+	panic("compiled without GStreamerEbiten support")
+}
+
 func (p *GStreamerEbiten) GetLength(
 	ctx context.Context,
 ) (time.Duration, error) {
