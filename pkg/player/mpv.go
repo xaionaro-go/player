@@ -43,6 +43,7 @@ type MPV struct {
 	MPVClient  *mpv.Client
 	MPVConn    *mpvipc.Connection
 	CancelFunc context.CancelFunc
+	ConnMutex  xsync.Mutex
 	isClosed   bool
 
 	EndChInitialized bool
@@ -392,8 +393,10 @@ func (p *MPV) mpvSet(
 ) (_err error) {
 	logger.Debugf(ctx, "mpvSet(ctx, '%s', %v)", key, value)
 	defer func() { logger.Debugf(ctx, "/mpvSet(ctx, '%s', %v): %v", key, value, _err) }()
-	return p.timeboxedCall(ctx, func() error {
-		return p.MPVConn.Set(key, value)
+	return xsync.DoR1(ctx, &p.ConnMutex, func() error {
+		return p.timeboxedCall(ctx, func() error {
+			return p.MPVConn.Set(key, value)
+		})
 	})
 }
 
@@ -404,10 +407,12 @@ func (p *MPV) mpvGet(
 	logger.Tracef(ctx, "mpvGet(ctx, '%s')", key)
 	defer func() { logger.Tracef(ctx, "/mpvGet(ctx, '%s'): %v %v", key, _ret, _err) }()
 	var result any
-	err := p.timeboxedCall(ctx, func() error {
-		var err error
-		result, err = p.MPVConn.Get(key)
-		return err
+	err := xsync.DoR1(ctx, &p.ConnMutex, func() error {
+		return p.timeboxedCall(ctx, func() error {
+			var err error
+			result, err = p.MPVConn.Get(key)
+			return err
+		})
 	})
 	return result, err
 }
@@ -419,10 +424,12 @@ func (p *MPV) mpvCall(
 	logger.Debugf(ctx, "mpvCall(ctx, %v)", args)
 	defer func() { logger.Debugf(ctx, "/mpvCall(ctx, %v): %v %v", args, _ret, _err) }()
 	var result any
-	err := p.timeboxedCall(ctx, func() error {
-		var err error
-		result, err = p.MPVConn.Call(args...)
-		return err
+	err := xsync.DoR1(ctx, &p.ConnMutex, func() error {
+		return p.timeboxedCall(ctx, func() error {
+			var err error
+			result, err = p.MPVConn.Call(args...)
+			return err
+		})
 	})
 	return result, err
 }
