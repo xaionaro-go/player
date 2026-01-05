@@ -186,15 +186,15 @@ func (p *Decoder) openURL(
 	decoderNode := node.NewFromKernel(
 		ctx,
 		kernel.NewDecoder(ctx, codec.NewNaiveDecoderFactory(ctx, nil)),
-		processor.DefaultOptionsRecoder()...,
+		processor.DefaultOptionsTranscoder()...,
 	)
 	playerNode := node.NewFromKernel(
 		ctx,
 		p,
-		processor.DefaultOptionsRecoder()...,
+		processor.DefaultOptionsTranscoder()...,
 	)
-	inputNode.AddPushPacketsTo(ctx, decoderNode)
-	decoderNode.AddPushFramesTo(ctx, playerNode)
+	inputNode.AddPushTo(ctx, decoderNode)
+	decoderNode.AddPushTo(ctx, playerNode)
 
 	p.onSeek(ctx)
 

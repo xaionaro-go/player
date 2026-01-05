@@ -10,6 +10,7 @@ import (
 	"github.com/xaionaro-go/avpipeline/frame"
 	"github.com/xaionaro-go/avpipeline/kernel"
 	"github.com/xaionaro-go/avpipeline/packet"
+	"github.com/xaionaro-go/avpipeline/packetorframe"
 	"github.com/xaionaro-go/avpipeline/types"
 	"github.com/xaionaro-go/observability"
 	"github.com/xaionaro-go/player/pkg/player/decoder/libav"
@@ -56,13 +57,11 @@ func (r *ImageRendererV4L2Output) Close() error {
 }
 
 var (
-	closedPacketsCh = make(chan packet.Output)
-	closedFramesCh  = make(chan frame.Output)
+	closedOutputCh = make(chan packetorframe.OutputUnion)
 )
 
 func init() {
-	close(closedPacketsCh)
-	close(closedFramesCh)
+	close(closedOutputCh)
 }
 
 func (r *ImageRendererV4L2Output) SetImage(
@@ -93,27 +92,31 @@ func (r *ImageRendererV4L2Output) setImage(
 	}
 
 	var err error
-	packetsCh := make(chan packet.Output)
+	packetsCh := make(chan packetorframe.OutputUnion)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	observability.Go(ctx, func(ctx context.Context) {
 		defer wg.Done()
 		for p := range packetsCh {
-			err = r.Output.SendInputPacket(
+			err = r.Output.SendInput(
 				ctx,
-				packet.BuildInput(
-					p.Packet,
-					p.StreamInfo,
-				),
-				closedPacketsCh, closedFramesCh)
-
+				packetorframe.InputUnion{
+					Packet: ptr(packet.BuildInput(
+						p.Packet.Packet,
+						p.Packet.StreamInfo,
+					)),
+				},
+				closedOutputCh,
+			)
 			if err != nil {
 				break
 			}
 		}
 	})
 
-	err = r.Encoder.SendInputFrame(ctx, f, packetsCh, closedFramesCh)
+	err = r.Encoder.SendInput(ctx, packetorframe.InputUnion{
+		Frame: &f,
+	}, packetsCh)
 	close(packetsCh)
 	if err != nil {
 		return fmt.Errorf("unable to send the frame to the encoder: %w", err)

@@ -6,9 +6,8 @@ import (
 	"fmt"
 
 	"github.com/facebookincubator/go-belt/tool/logger"
-	"github.com/xaionaro-go/avpipeline/frame"
 	"github.com/xaionaro-go/avpipeline/kernel"
-	"github.com/xaionaro-go/avpipeline/packet"
+	"github.com/xaionaro-go/avpipeline/packetorframe"
 	avptypes "github.com/xaionaro-go/avpipeline/types"
 	"github.com/xaionaro-go/xsync"
 )
@@ -19,22 +18,19 @@ func (p *Decoder) GetObjectID() avptypes.ObjectID {
 	return avptypes.GetObjectID(p)
 }
 
-func (p *Decoder) SendInputPacket(
+func (p *Decoder) SendInput(
 	ctx context.Context,
-	input packet.Input,
-	outputPacketsCh chan<- packet.Output,
-	outputFramesCh chan<- frame.Output,
+	input packetorframe.InputUnion,
+	outputCh chan<- packetorframe.OutputUnion,
 ) error {
-	return fmt.Errorf("player expects to receive only decoded frames")
-}
-
-func (p *Decoder) SendInputFrame(
-	ctx context.Context,
-	input frame.Input,
-	outputPacketsCh chan<- packet.Output,
-	outputFramesCh chan<- frame.Output,
-) error {
-	return p.processFrame(ctx, input)
+	switch {
+	case input.Packet != nil:
+		return fmt.Errorf("player expects to receive only decoded frames")
+	case input.Frame != nil:
+		return p.processFrame(ctx, *input.Frame)
+	default:
+		return fmt.Errorf("invalid input: neither packet nor frame is set")
+	}
 }
 
 func (p *Decoder) String() string {
@@ -84,8 +80,7 @@ func (p *Decoder) CloseChan() <-chan struct{} {
 
 func (p *Decoder) Generate(
 	ctx context.Context,
-	outputPacketsCh chan<- packet.Output,
-	outputFramesCh chan<- frame.Output,
+	outputCh chan<- packetorframe.OutputUnion,
 ) error {
 	return nil
 }
