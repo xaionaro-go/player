@@ -16,9 +16,9 @@ func pcmFormatToAudio(libavPCMFormat astiav.SampleFormat) audio.PCMFormat {
 	case astiav.SampleFormatFltp:
 		return audio.PCMFormatFloat32LE
 	case astiav.SampleFormatNb:
-		return audio.PCMFormatUndefined
+		return audio.UndefinedPCMFormat
 	case astiav.SampleFormatNone:
-		return audio.PCMFormatUndefined
+		return audio.UndefinedPCMFormat
 	case astiav.SampleFormatS16:
 		return audio.PCMFormatS16LE
 	case astiav.SampleFormatS16P:
@@ -36,7 +36,7 @@ func pcmFormatToAudio(libavPCMFormat astiav.SampleFormat) audio.PCMFormat {
 	case astiav.SampleFormatU8P:
 		return audio.PCMFormatU8
 	}
-	return audio.PCMFormatUndefined
+	return audio.UndefinedPCMFormat
 }
 
 func isPlanar(libavPCMFormat astiav.SampleFormat) bool {

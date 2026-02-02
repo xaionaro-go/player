@@ -2,7 +2,8 @@ module github.com/xaionaro-go/player
 
 go 1.25.5
 
-replace github.com/asticode/go-astiav v0.36.0 => github.com/xaionaro-go/astiav v0.0.0-20251221215811-398e1d68b2e9
+
+replace github.com/asticode/go-astiav v0.36.0 => github.com/xaionaro-go/astiav v0.0.0-20260124160203-67afd1e3e67e
 
 replace github.com/dexterlb/mpvipc => github.com/xaionaro-go/mpvipc v0.0.0-20251019230357-e0f534e5dde4
 
@@ -18,7 +19,7 @@ require (
 	github.com/goccy/go-yaml v1.18.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/spf13/pflag v1.0.10
-	github.com/xaionaro-go/audio v0.0.0-20250426140416-6a9b3f1c8737
+	github.com/xaionaro-go/audio v0.0.0-20260202195702-429dcb87c05c
 	github.com/xaionaro-go/avpipeline v0.0.0-20260105202319-a696ac2167b6
 	github.com/xaionaro-go/datacounter v1.0.4
 	github.com/xaionaro-go/logwriter v0.0.0-20250111154941-c3f7a1a2d567
